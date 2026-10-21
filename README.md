@@ -32,8 +32,10 @@ in seconds rather than minutes.
 2. Run `/cr-review` in Claude Code and open the URL it returns. It opens the project root (the git root, or the
    worktree root when run inside a git worktree), where you can browse to any Markdown file. Pass a path such as
    `/cr-review PLAN.md` to open a specific file or directory
-3. Highlight portions of the document and add contextual comments
-4. Run `/cr-address PLAN.md` in your Claude Code session
+3. Highlight portions of any document and add contextual comments. The file listing shows how many unresolved
+   threads each file has
+4. Run `/cr-address` in your Claude Code session (or `/cr-address PLAN.md` for a single file)
+   - Claude Code picks up comments from every file you commented on in the project
    - Claude Code will see all comment threads and their replies
    - It can discuss your feedback by replying to threads
    - It can make changes and resolve threads when complete

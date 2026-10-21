@@ -249,49 +249,42 @@ func runReview() {
 
 func runAddress() {
 	// Parse flags
-	reviewCmd := flag.NewFlagSet("address", flag.ExitOnError)
-	projectDir := reviewCmd.String("project", "", "Project directory")
-	filePath := reviewCmd.String("file", "", "File path relative to project directory")
-	pending := reviewCmd.Bool("pending", false, "Only show threads awaiting an agent response")
+	addressCmd := flag.NewFlagSet("address", flag.ExitOnError)
+	projectFlag := addressCmd.String("project", "", "Project directory")
+	filePath := addressCmd.String("file", "", "File path (defaults to all files in the project)")
+	pending := addressCmd.Bool("pending", false, "Only show threads awaiting an agent response")
 
-	if err := reviewCmd.Parse(os.Args[2:]); err != nil {
+	if err := addressCmd.Parse(os.Args[2:]); err != nil {
 		log.Fatalf("Failed to parse flags: %v", err)
 	}
-
-	// Resolve project directory (default to current directory)
-	if *projectDir == "" || *projectDir == "." {
-		cwd, err := os.Getwd()
-		if err != nil {
-			log.Fatalf("Failed to get current directory: %v", err)
-		}
-		*projectDir = cwd
-	}
-	if *filePath == "" {
-		fmt.Println("Error: --file flag is required")
-		os.Exit(1)
-	}
-
-	// Remove @ prefix if present
-	*filePath = strings.TrimPrefix(*filePath, "@")
 
 	// Initialize database
 	if err := initDB(); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
-	// Debug: show what we're searching for
-	log.Printf("Searching for comments: project_directory=%q, file_path=%q", *projectDir, *filePath)
+	projectDir, relPath, err := resolveTarget(*projectFlag, *filePath)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
 
-	// Get unresolved comments
-	comments, err := getComments(*projectDir, *filePath, false)
+	// Get unresolved comments, for one file or the whole project
+	var comments []Comment
+	scope := relPath
+	if relPath == "" {
+		scope = projectDir
+		comments, err = getProjectComments(projectDir, false)
+	} else {
+		comments, err = getComments(projectDir, relPath, false)
+	}
 	if err != nil {
 		log.Fatalf("Failed to get comments: %v", err)
 	}
-	log.Printf("Found %d unresolved comments", len(comments))
 
 	// Format and output comments
 	if len(comments) == 0 {
-		fmt.Printf("No unresolved comments for %s\n", *filePath)
+		fmt.Printf("No unresolved comments for %s\n", scope)
 		return
 	}
 
@@ -301,13 +294,40 @@ func runAddress() {
 	if *pending {
 		threads = filterPendingThreads(threads)
 		if len(threads) == 0 {
-			fmt.Printf("No unresolved comments awaiting a response for %s\n", *filePath)
+			fmt.Printf("No unresolved comments awaiting a response for %s\n", scope)
 			return
 		}
 	}
 
-	fmt.Printf("Found %d unresolved comment(s) for %s:\n\n", len(threads), *filePath)
+	if relPath != "" {
+		fmt.Printf("Found %d unresolved comment(s) for %s:\n\n", len(threads), relPath)
+		printThreads(threads)
+		return
+	}
 
+	// Project-wide: list the files with comments, then each file's threads
+	var files []string
+	threadsByFile := make(map[string][][]Comment)
+	for _, thread := range threads {
+		file := thread[0].FilePath
+		if _, seen := threadsByFile[file]; !seen {
+			files = append(files, file)
+		}
+		threadsByFile[file] = append(threadsByFile[file], thread)
+	}
+
+	fmt.Printf("Found %d unresolved comment(s) in %d file(s) of %s:\n", len(threads), len(files), projectDir)
+	for _, file := range files {
+		fmt.Printf("- %s (%d)\n", file, len(threadsByFile[file]))
+	}
+
+	for _, file := range files {
+		fmt.Printf("\n# File: %s\n\n", filepath.Join(projectDir, file))
+		printThreads(threadsByFile[file])
+	}
+}
+
+func printThreads(threads [][]Comment) {
 	for threadIndex, thread := range threads {
 		rootComment := thread[0]
 
@@ -454,7 +474,7 @@ func runReply() {
 func runResolve() {
 	// Parse flags
 	resolveCmd := flag.NewFlagSet("resolve", flag.ExitOnError)
-	projectDir := resolveCmd.String("project", "", "Project directory")
+	projectFlag := resolveCmd.String("project", "", "Project directory")
 	filePath := resolveCmd.String("file", "", "File path relative to project directory")
 	commentID := resolveCmd.Int("comment-id", 0, "ID of specific comment to resolve")
 
@@ -501,35 +521,21 @@ func runResolve() {
 		return
 	}
 
-	// Handle file mode (original behavior)
-	// Resolve project directory (default to current directory)
-	if *projectDir == "" || *projectDir == "." {
-		cwd, err := os.Getwd()
-		if err != nil {
-			log.Fatalf("Failed to get current directory: %v", err)
-		}
-		*projectDir = cwd
-	}
+	// Handle file mode
 	if *filePath == "" {
 		fmt.Println("Error: --file flag is required (or use --comment-id)")
 		os.Exit(1)
 	}
 
-	// Remove @ prefix if present
-	*filePath = strings.TrimPrefix(*filePath, "@")
-
-	// Debug: show what we're searching for
-	log.Printf("Searching for comments: project_directory=%q, file_path=%q", *projectDir, *filePath)
-
-	// First check if there are any unresolved comments
-	comments, err := getComments(*projectDir, *filePath, false)
+	projectDir, relPath, err := resolveTarget(*projectFlag, *filePath)
 	if err != nil {
-		log.Fatalf("Failed to get comments: %v", err)
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
 	}
-	log.Printf("Found %d unresolved comments", len(comments))
+	*filePath = relPath
 
 	// Resolve comments
-	count, err := resolveComments(*projectDir, *filePath)
+	count, err := resolveComments(projectDir, *filePath)
 	if err != nil {
 		log.Fatalf("Failed to resolve comments: %v", err)
 	}
@@ -540,7 +546,7 @@ func runResolve() {
 		fmt.Printf("Resolved %d comment(s) for %s\n", count, *filePath)
 
 		// Notify server about resolved comments (if server is running)
-		notifyServerCommentsChanged(*projectDir, *filePath)
+		notifyServerCommentsChanged(projectDir, *filePath)
 	}
 }
 

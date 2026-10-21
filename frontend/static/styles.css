@@ -249,6 +249,17 @@ ul.contains-task-list li {
     text-decoration: underline;
 }
 
+.entry-comment-count {
+    margin-left: 8px;
+    background: #0366d6;
+    color: white;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
 .no-content {
     color: #586069;
     padding: 20px;

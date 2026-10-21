@@ -26,6 +26,9 @@
                 <a href="/projects{{$.ProjectDir | pathescape}}/{{.Path | pathescape}}" class="entry-link">
                     {{.Name}}{{if .IsDir}}/{{end}}
                 </a>
+                {{if .Comments}}
+                <span class="entry-comment-count" title="Unresolved comment threads">{{.Comments}}</span>
+                {{end}}
             </li>
             {{end}}
         </ul>

@@ -235,6 +235,64 @@ func getComments(projectDir, filePath string, resolved bool) ([]Comment, error) 
 	return comments, nil
 }
 
+// getProjectComments returns comments across all files of a project, ordered by
+// file and then by thread.
+func getProjectComments(projectDir string, resolved bool) ([]Comment, error) {
+	resolvedFilter := "resolved_at IS NULL"
+	if resolved {
+		resolvedFilter = "resolved_at IS NOT NULL"
+	}
+	query := `
+		SELECT id, project_directory, file_path, line_start, line_end, selected_text, comment_text, created_at, resolved_at, root_id, author, resolved_by
+		FROM comments
+		WHERE project_directory = ? AND ` + resolvedFilter + `
+		ORDER BY file_path ASC, COALESCE(root_id, id) ASC, created_at ASC`
+	logQuery(query, projectDir)
+	rows, err := db.Query(query, projectDir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var comments []Comment
+	for rows.Next() {
+		var c Comment
+		if err := rows.Scan(&c.ID, &c.ProjectDirectory, &c.FilePath, &c.LineStart, &c.LineEnd, &c.SelectedText, &c.CommentText, &c.CreatedAt, &c.ResolvedAt, &c.RootID, &c.Author, &c.ResolvedBy); err != nil {
+			return nil, err
+		}
+		comments = append(comments, c)
+	}
+
+	return comments, nil
+}
+
+// getUnresolvedThreadCounts returns the number of unresolved threads per file of a project.
+func getUnresolvedThreadCounts(projectDir string) (map[string]int, error) {
+	query := `
+		SELECT file_path, COUNT(*)
+		FROM comments
+		WHERE project_directory = ? AND root_id IS NULL AND resolved_at IS NULL
+		GROUP BY file_path`
+	logQuery(query, projectDir)
+	rows, err := db.Query(query, projectDir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	counts := make(map[string]int)
+	for rows.Next() {
+		var file string
+		var count int
+		if err := rows.Scan(&file, &count); err != nil {
+			return nil, err
+		}
+		counts[file] = count
+	}
+
+	return counts, nil
+}
+
 func updateComment(commentID, commentText string) error {
 	query := `
 		UPDATE comments

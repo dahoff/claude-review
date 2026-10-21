@@ -251,11 +251,28 @@ func renderDirectoryListing(w http.ResponseWriter, r *http.Request, projectDir, 
 		return
 	}
 
+	// Unresolved thread counts, so files awaiting attention stand out
+	threadCounts, err := getUnresolvedThreadCounts(projectDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	countUnder := func(dirPath string) int {
+		total := 0
+		for file, count := range threadCounts {
+			if strings.HasPrefix(file, dirPath+"/") {
+				total += count
+			}
+		}
+		return total
+	}
+
 	// Filter for directories and markdown files
 	type Entry struct {
-		Name  string
-		IsDir bool
-		Path  string
+		Name     string
+		IsDir    bool
+		Path     string
+		Comments int
 	}
 
 	var filteredEntries []Entry
@@ -268,18 +285,22 @@ func renderDirectoryListing(w http.ResponseWriter, r *http.Request, projectDir, 
 			// Only include directories that contain markdown files
 			dirFullPath := filepath.Join(absPath, entry.Name())
 			if hasMarkdownFiles(dirFullPath) {
+				entryPath := filepath.Join(childPath, entry.Name())
 				filteredEntries = append(filteredEntries, Entry{
-					Name:  entry.Name(),
-					IsDir: true,
-					Path:  filepath.Join(childPath, entry.Name()),
+					Name:     entry.Name(),
+					IsDir:    true,
+					Path:     entryPath,
+					Comments: countUnder(entryPath),
 				})
 			}
 		} else if strings.HasSuffix(strings.ToLower(entry.Name()), ".md") {
 			// Include only markdown files
+			entryPath := filepath.Join(childPath, entry.Name())
 			filteredEntries = append(filteredEntries, Entry{
-				Name:  entry.Name(),
-				IsDir: false,
-				Path:  filepath.Join(childPath, entry.Name()),
+				Name:     entry.Name(),
+				IsDir:    false,
+				Path:     entryPath,
+				Comments: threadCounts[entryPath],
 			})
 		}
 	}

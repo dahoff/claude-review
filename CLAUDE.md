@@ -49,7 +49,7 @@ SQLite database stored at `~/.local/share/claude-review/comments.db`:
 
 ### Custom Slash Commands
 - `/cr-review [path]` (in `slash-commands/cr-review.md`): Runs `claude-review review --file <path>` to start the server, register the project, and open the project root (or the given file/directory) in the browser
-- `/cr-address` (in `slash-commands/cr-address.md`): Runs `claude-review address --file <file>` to fetch unresolved comment threads with full conversation history. Instructs Claude Code to either reply to threads for discussion or make changes and resolve threads when requests are clear
+- `/cr-address [file]` (in `slash-commands/cr-address.md`): Runs `claude-review address --pending --file <file>` to fetch unresolved comment threads awaiting a response, with full conversation history, for every file in the project when no file is given. Instructs Claude Code to either reply to threads for discussion or make changes and resolve threads when requests are clear
 
 ## Development Commands
 
@@ -105,9 +105,9 @@ The server uses multiple mechanisms for real-time updates:
 - `claude-review server --status`: Check if daemon is running and show PID info
 - `claude-review register [--project <path>]`: Register a project directory (defaults to current directory)
 - `claude-review review [--file <path>]`: Start server, register project, and show the URL for the project root or the given file/directory. The project is detected as the deepest of the git toplevel (the worktree root inside a git worktree) and any registered project containing the target (see `project.go`)
-- `claude-review address --file <path>`: Output unresolved comment threads for file (grouped by conversation)
+- `claude-review address [--file <path>] [--pending]`: Output unresolved comment threads (grouped by conversation) for a file, or for every file in the project grouped under `# File:` headers. `--pending` skips threads where the agent replied last
 - `claude-review reply --comment-id <id> --message <text>`: Reply to a comment thread
-- `claude-review resolve --file <path>`: Mark all comments as resolved for file
+- `claude-review resolve --file <path>`: Mark all comments as resolved for file (relative or absolute path)
 - `claude-review resolve --comment-id <id>`: Mark a specific comment thread as resolved
 - `claude-review install`: Install slash commands to ~/.claude/commands/
 - `claude-review uninstall`: Uninstall slash commands from ~/.claude/commands/

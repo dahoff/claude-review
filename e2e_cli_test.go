@@ -1,7 +1,10 @@
 package main_test
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -63,14 +66,14 @@ func TestE2E_CLI_Register(t *testing.T) {
 // TestE2E_CLI_Address tests the address command edge cases
 // Note: Full workflow testing is covered in TestE2E_CommentWorkflow
 func TestE2E_CLI_Address(t *testing.T) {
-	t.Run("address without file flag shows error", func(t *testing.T) {
+	t.Run("address without file flag and no comments", func(t *testing.T) {
 		env := setupE2E(t)
 		_, err := env.runCLI(t, "register", "--project", env.ProjectDir)
 		require.NoError(t, err)
 
 		output, err := env.runCLI(t, "address", "--project", env.ProjectDir)
-		require.Error(t, err)
-		assert.Contains(t, output, "--file flag is required")
+		require.NoError(t, err)
+		assert.Contains(t, output, "No unresolved comments for "+env.ProjectDir)
 	})
 
 	t.Run("address with no comments", func(t *testing.T) {
@@ -664,5 +667,75 @@ func TestE2E_CLI_Uninstall(t *testing.T) {
 		content, err := os.ReadFile(crReviewPath)
 		require.NoError(t, err)
 		assert.Contains(t, string(content), "claude-review")
+	})
+}
+
+// TestE2E_CLI_Address_Project tests addressing comments across all files of a project
+func TestE2E_CLI_Address_Project(t *testing.T) {
+	env := setupE2E(t)
+	_, err := env.runCLI(t, "register", "--project", env.ProjectDir)
+	require.NoError(t, err)
+
+	require.NoError(t, os.MkdirAll(filepath.Join(env.ProjectDir, "docs"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(env.ProjectDir, "docs", "design.md"), []byte("# Design\n"), 0644))
+
+	addComment := func(file, text string) int {
+		resp := env.postJSON(t, "/api/comments", map[string]interface{}{
+			"project_directory": env.ProjectDir,
+			"file_path":         file,
+			"line_start":        1,
+			"line_end":          1,
+			"selected_text":     "Test",
+			"comment_text":      text,
+		})
+		defer func() { _ = resp.Body.Close() }()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var created map[string]interface{}
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&created))
+		return int(created["id"].(float64))
+	}
+
+	addComment("test.md", "Comment on test")
+	addComment("docs/design.md", "Comment on design")
+	answeredID := addComment("simple.md", "Answered comment on simple")
+	_, err = env.runCLI(t, "reply", "--comment-id", fmt.Sprintf("%d", answeredID), "--message", "Done")
+	require.NoError(t, err)
+
+	t.Run("lists every file with unresolved comments", func(t *testing.T) {
+		output, err := env.runCLI(t, "address", "--project", env.ProjectDir)
+		require.NoError(t, err)
+		assert.Contains(t, output, "Found 3 unresolved comment(s) in 3 file(s)")
+		assert.Contains(t, output, "- docs/design.md (1)")
+		assert.Contains(t, output, "# File: "+filepath.Join(env.ProjectDir, "test.md"))
+		assert.Contains(t, output, "Comment on design")
+	})
+
+	t.Run("pending skips files where the agent replied last", func(t *testing.T) {
+		output, err := env.runCLI(t, "address", "--pending", "--project", env.ProjectDir)
+		require.NoError(t, err)
+		assert.Contains(t, output, "Found 2 unresolved comment(s) in 2 file(s)")
+		assert.NotContains(t, output, "simple.md")
+	})
+
+	t.Run("detects the project from the current directory", func(t *testing.T) {
+		output, err := env.runCLIInDir(t, filepath.Join(env.ProjectDir, "docs"), "address")
+		require.NoError(t, err)
+		assert.Contains(t, output, "in 3 file(s) of "+env.ProjectDir)
+	})
+
+	t.Run("resolve accepts the absolute path from address output", func(t *testing.T) {
+		output, err := env.runCLIInDir(t, env.TempDir, "resolve", "--file", filepath.Join(env.ProjectDir, "simple.md"))
+		require.NoError(t, err)
+		assert.Contains(t, output, "Resolved 2 comment(s) for simple.md")
+	})
+
+	t.Run("directory listing shows unresolved counts", func(t *testing.T) {
+		resp, err := http.Get(env.BaseURL + "/projects" + env.ProjectDir + "/")
+		require.NoError(t, err)
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+
+		assert.Regexp(t, `docs/\s*</a>\s*<span class="entry-comment-count"[^>]*>1</span>`, string(body))
+		assert.Regexp(t, `test\.md\s*</a>\s*<span class="entry-comment-count"[^>]*>1</span>`, string(body))
 	})
 }
