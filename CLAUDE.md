@@ -48,7 +48,7 @@ SQLite database stored at `~/.local/share/claude-review/comments.db`:
   - `resolved_by`: Name of who resolved the thread
 
 ### Custom Slash Commands
-- `/cr-review` (in `slash-commands/cr-review.md`): Runs `claude-review review --file <file>` to start the server, register the project, and open the file URL in the browser
+- `/cr-review [path]` (in `slash-commands/cr-review.md`): Runs `claude-review review --file <path>` to start the server, register the project, and open the project root (or the given file/directory) in the browser
 - `/cr-address` (in `slash-commands/cr-address.md`): Runs `claude-review address --file <file>` to fetch unresolved comment threads with full conversation history. Instructs Claude Code to either reply to threads for discussion or make changes and resolve threads when requests are clear
 
 ## Development Commands
@@ -104,7 +104,7 @@ The server uses multiple mechanisms for real-time updates:
 - `claude-review server --stop`: Stop the running daemon
 - `claude-review server --status`: Check if daemon is running and show PID info
 - `claude-review register [--project <path>]`: Register a project directory (defaults to current directory)
-- `claude-review review --file <path>`: Start server, register project, and show file URL
+- `claude-review review [--file <path>]`: Start server, register project, and show the URL for the project root or the given file/directory. The project is detected as the deepest of the git toplevel (the worktree root inside a git worktree) and any registered project containing the target (see `project.go`)
 - `claude-review address --file <path>`: Output unresolved comment threads for file (grouped by conversation)
 - `claude-review reply --comment-id <id> --message <text>`: Reply to a comment thread
 - `claude-review resolve --file <path>`: Mark all comments as resolved for file

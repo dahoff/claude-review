@@ -29,7 +29,9 @@ in seconds rather than minutes.
 ## How it fits into your workflow
 
 1. Ask Claude Code to create a Markdown document (e.g. `PLAN.md`)
-2. Run `/cr-review PLAN.md` in Claude Code and open the URL it returns
+2. Run `/cr-review` in Claude Code and open the URL it returns. It opens the project root (the git root, or the
+   worktree root when run inside a git worktree), where you can browse to any Markdown file. Pass a path such as
+   `/cr-review PLAN.md` to open a specific file or directory
 3. Highlight portions of the document and add contextual comments
 4. Run `/cr-address PLAN.md` in your Claude Code session
    - Claude Code will see all comment threads and their replies

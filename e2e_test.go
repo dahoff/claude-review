@@ -243,6 +243,30 @@ func (env *TestEnv) runCLI(t *testing.T, args ...string) (string, error) {
 	return string(output), err
 }
 
+func (env *TestEnv) runCLIInDir(t *testing.T, dir string, args ...string) (string, error) {
+	t.Helper()
+
+	cmd := exec.Command(env.BinaryPath, args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(),
+		"CR_DATA_DIR="+env.DataDir,
+		"CR_LISTEN_PORT="+env.Port,
+		"GOCOVERDIR="+filepath.Join(env.TempDir, "coverage"),
+	)
+
+	output, err := cmd.CombinedOutput()
+	return string(output), err
+}
+
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+
+	cmd := exec.Command("git", append([]string{"-c", "user.name=test", "-c", "user.email=test@example.com"}, args...)...)
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(output))
+}
+
 func (env *TestEnv) postJSON(t *testing.T, path string, data interface{}) *http.Response {
 	t.Helper()
 

@@ -1,6 +1,6 @@
 ---
-description: Open a Markdown file in the claude-review web interface
-argument-hint: [file]
+description: Open a project, directory or Markdown file in the claude-review web interface
+argument-hint: [file or directory, defaults to the project root]
 allowed-tools: Bash(claude-review review:*)
 ---
 

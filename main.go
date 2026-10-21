@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -199,29 +200,12 @@ func runRegister() {
 func runReview() {
 	// Parse flags
 	reviewCmd := flag.NewFlagSet("review", flag.ExitOnError)
-	projectDir := reviewCmd.String("project", "", "Project directory (defaults to current directory)")
-	filePath := reviewCmd.String("file", "", "File path relative to project directory")
+	projectFlag := reviewCmd.String("project", "", "Project directory (defaults to the git root or registered project)")
+	filePath := reviewCmd.String("file", "", "File or directory to open (defaults to the project root)")
 
 	if err := reviewCmd.Parse(os.Args[2:]); err != nil {
 		log.Fatalf("Failed to parse flags: %v", err)
 	}
-
-	// Resolve project directory (default to current directory)
-	if *projectDir == "" || *projectDir == "." {
-		cwd, err := os.Getwd()
-		if err != nil {
-			log.Fatalf("Failed to get current directory: %v", err)
-		}
-		*projectDir = cwd
-	}
-
-	if *filePath == "" {
-		fmt.Println("Error: --file flag is required")
-		os.Exit(1)
-	}
-
-	// Remove @ prefix if present
-	*filePath = strings.TrimPrefix(*filePath, "@")
 
 	// Step 1: Start daemon if not running
 	if !isServerRunning() {
@@ -235,8 +219,13 @@ func runReview() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
-	_, err := createProject(*projectDir)
+	projectDir, relPath, err := resolveTarget(*projectFlag, *filePath)
 	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if _, err := createProject(projectDir); err != nil {
 		log.Fatalf("Failed to register project: %v", err)
 	}
 
@@ -246,13 +235,16 @@ func runReview() {
 		port = "4779"
 	}
 
-	reviewURL := fmt.Sprintf(
-		"http://localhost:%s/projects%s/%s",
-		port,
-		escapePathComponents(*projectDir),
-		escapePathComponents(*filePath),
-	)
-	fmt.Printf("Open this URL in your browser to start reviewing %s:\n\n%s\n", *filePath, reviewURL)
+	reviewURL := fmt.Sprintf("http://localhost:%s/projects%s/", port, escapePathComponents(projectDir))
+	name := filepath.Base(projectDir)
+	if relPath != "" {
+		reviewURL += escapePathComponents(relPath)
+		name = relPath
+		if info, err := os.Stat(filepath.Join(projectDir, relPath)); err == nil && info.IsDir() {
+			reviewURL += "/"
+		}
+	}
+	fmt.Printf("Open this URL in your browser to start reviewing %s:\n\n%s\n", name, reviewURL)
 }
 
 func runAddress() {

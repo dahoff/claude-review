@@ -188,10 +188,43 @@ func TestE2E_CLI_Review(t *testing.T) {
 		_ = waitForPIDFileRemoved(env.PIDFile(), 2*time.Second)
 	})
 
-	t.Run("review without file flag shows error", func(t *testing.T) {
+	t.Run("review without file opens project root", func(t *testing.T) {
 		output, err := env.runCLI(t, "review", "--project", env.ProjectDir)
-		require.Error(t, err)
-		assert.Contains(t, output, "--file flag is required")
+		require.NoError(t, err)
+		assert.Contains(t, output, fmt.Sprintf("http://localhost:%s/projects%s/\n", env.Port, env.ProjectDir))
+	})
+
+	t.Run("review detects git root from a subdirectory", func(t *testing.T) {
+		repo := filepath.Join(tempDir, "repo")
+		subDir := filepath.Join(repo, "docs")
+		require.NoError(t, os.MkdirAll(subDir, 0755))
+		runGit(t, repo, "init", "-q")
+
+		output, err := env.runCLIInDir(t, subDir, "review")
+		require.NoError(t, err)
+		assert.Contains(t, output, fmt.Sprintf("/projects%s/\n", repo))
+
+		output, err = env.runCLIInDir(t, subDir, "review", "--file", "PLAN.md")
+		require.NoError(t, err)
+		assert.Contains(t, output, fmt.Sprintf("/projects%s/docs/PLAN.md\n", repo))
+	})
+
+	t.Run("review scopes to a git worktree", func(t *testing.T) {
+		repo := filepath.Join(tempDir, "wt-repo")
+		require.NoError(t, os.MkdirAll(repo, 0755))
+		runGit(t, repo, "init", "-q")
+		runGit(t, repo, "commit", "-q", "--allow-empty", "-m", "init")
+		worktree := filepath.Join(repo, ".claude", "worktrees", "feature")
+		runGit(t, repo, "worktree", "add", "-q", worktree)
+
+		output, err := env.runCLIInDir(t, worktree, "review")
+		require.NoError(t, err)
+		assert.Contains(t, output, fmt.Sprintf("/projects%s/\n", worktree))
+
+		// A directory argument opens that directory
+		output, err = env.runCLIInDir(t, repo, "review", "--file", ".claude/worktrees/feature")
+		require.NoError(t, err)
+		assert.Contains(t, output, fmt.Sprintf("/projects%s/\n", worktree))
 	})
 
 	t.Run("review outputs URL and starts daemon", func(t *testing.T) {
