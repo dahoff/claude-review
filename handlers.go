@@ -400,14 +400,20 @@ func handleUpdateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if comment has replies
-	hasReply, err := hasReplies(commentID)
+	existing, err := getCommentByID(commentID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if hasReply {
-		http.Error(w, "Cannot edit comment with replies", http.StatusBadRequest)
+	if existing == nil {
+		http.Error(w, "Comment not found", http.StatusNotFound)
+		return
+	}
+	if status, msg, err := checkEditable(existing); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if status != 0 {
+		http.Error(w, msg, status)
 		return
 	}
 
@@ -417,6 +423,11 @@ func handleUpdateComment(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if strings.TrimSpace(req.CommentText) == "" {
+		http.Error(w, "comment_text is required", http.StatusBadRequest)
 		return
 	}
 
@@ -450,9 +461,52 @@ func handleUpdateComment(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+const threadClaimedMessage = "Claude is processing this thread; try again once it has replied"
+
+// isThreadClaimed reports whether the agent is processing the comment's thread.
+func isThreadClaimed(c *Comment) bool {
+	if c.RootID == nil {
+		return c.Claimed
+	}
+	root, err := getCommentByID(*c.RootID)
+	return err == nil && root != nil && root.Claimed
+}
+
+// checkEditable returns a non-zero HTTP status and message when the user may not
+// edit the comment: only the user's own latest message in an open thread that the
+// agent is not processing can be edited.
+func checkEditable(c *Comment) (int, string, error) {
+	if c.Author != "user" {
+		return http.StatusForbidden, "Only your own comments can be edited", nil
+	}
+	if c.ResolvedAt != nil {
+		return http.StatusBadRequest, "Cannot edit a resolved comment", nil
+	}
+	last, err := isLastInThread(c)
+	if err != nil {
+		return 0, "", err
+	}
+	if !last {
+		return http.StatusBadRequest, "Cannot edit comment with replies", nil
+	}
+	if isThreadClaimed(c) {
+		return http.StatusConflict, threadClaimedMessage, nil
+	}
+	return 0, "", nil
+}
+
 func handleDeleteComment(w http.ResponseWriter, r *http.Request) {
 	// Extract comment ID from URL path
 	commentID := chi.URLParam(r, "id")
+
+	// Refuse to delete from a thread the agent is processing
+	var id int
+	if _, err := fmt.Sscanf(commentID, "%d", &id); err == nil {
+		if comment, err := getCommentByID(id); err == nil && comment != nil && isThreadClaimed(comment) {
+			http.Error(w, threadClaimedMessage, http.StatusConflict)
+			return
+		}
+	}
 
 	if err := deleteComment(commentID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

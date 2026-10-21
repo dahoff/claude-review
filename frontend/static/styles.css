@@ -735,6 +735,23 @@ ul.contains-task-list li {
     color: #0550ae;
 }
 
+.comment-badge-edit {
+    background-color: #f6f8fa;
+    border-color: #6e7781;
+    color: #57606a;
+}
+
+.comment-badge-edit:hover:not(:disabled) {
+    background-color: #eaeef2;
+    border-color: #424a53;
+    color: #24292f;
+}
+
+.comment-badge-edit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .comment-badge-resolve {
     background-color: #dafbe1;
     border-color: #1a7f37;

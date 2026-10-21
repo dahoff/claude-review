@@ -192,12 +192,23 @@
             // Check if thread is awaiting user response (last reply is from agent)
             const isAwaitingResponse = replies.length > 0 && replies[replies.length - 1].author === 'agent';
 
+            // The user's own latest message can be edited, unless Claude is processing the thread
+            const lastComment = replies.length > 0 ? replies[replies.length - 1] : rootComment;
+            const editableId = lastComment.author === 'user' ? lastComment.id : null;
+            const editState = { claimed: Boolean(rootComment.claimed) };
+
             const threadItem = document.createElement('div');
             threadItem.className = 'thread-container';
             threadItem.dataset.threadId = rootComment.id;
 
             // Create root comment display
-            const rootItem = createCommentPanelItem(rootComment, true, replies.length, isAwaitingResponse);
+            const rootItem = createCommentPanelItem(
+                rootComment,
+                true,
+                replies.length,
+                isAwaitingResponse,
+                editableId === rootComment.id ? editState : null,
+            );
 
             threadItem.appendChild(rootItem);
 
@@ -207,7 +218,13 @@
                 repliesContainer.className = 'thread-replies';
 
                 replies.forEach((reply) => {
-                    const replyItem = createCommentPanelItem(reply, false, 0, false);
+                    const replyItem = createCommentPanelItem(
+                        reply,
+                        false,
+                        0,
+                        false,
+                        editableId === reply.id ? editState : null,
+                    );
                     repliesContainer.appendChild(replyItem);
                 });
 
@@ -221,7 +238,7 @@
         commentPanel.classList.add('ready');
     }
 
-    function createCommentPanelItem(comment, isRoot, replyCount, isAwaitingResponse) {
+    function createCommentPanelItem(comment, isRoot, replyCount, isAwaitingResponse, editState) {
         const item = document.createElement('div');
         item.className = isRoot ? 'thread-item comment-root' : 'thread-item comment-reply';
 
@@ -252,11 +269,15 @@
 
         authorDiv.appendChild(authorInfoDiv);
 
+        const badgesDiv = document.createElement('div');
+        badgesDiv.className = 'comment-badges';
+
+        if (editState) {
+            badgesDiv.appendChild(createEditButton(comment, editState.claimed));
+        }
+
         // Add badges to author row for root comments
         if (isRoot) {
-            const badgesDiv = document.createElement('div');
-            badgesDiv.className = 'comment-badges';
-
             // Add status dot for awaiting response
             if (isAwaitingResponse) {
                 const statusDot = document.createElement('div');
@@ -284,7 +305,9 @@
                 handleResolveThread(comment);
             });
             badgesDiv.appendChild(resolveBtn);
+        }
 
+        if (badgesDiv.hasChildNodes()) {
             authorDiv.appendChild(badgesDiv);
         }
 
@@ -329,6 +352,30 @@
         }
 
         return item;
+    }
+
+    function createEditButton(comment, claimed) {
+        const editBtn = document.createElement('button');
+        editBtn.className = 'comment-badge-btn comment-badge-edit';
+        editBtn.textContent = 'Edit';
+        if (claimed) {
+            editBtn.disabled = true;
+            editBtn.title = 'Claude is processing this thread';
+        }
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const highlight = comment.root_id
+                ? null
+                : document.querySelector(`.comment-highlight[data-comment-id="${comment.id}"]`);
+            showEditCommentPopup(comment, highlight);
+        });
+        return editBtn;
+    }
+
+    function isThreadClaimed(comment) {
+        const rootId = comment.root_id || comment.id;
+        const root = (comments || []).find((c) => c.id === rootId);
+        return Boolean(root && root.claimed);
     }
 
     function groupCommentsByThread() {
@@ -442,6 +489,22 @@
         });
     }
 
+    /**
+     * Position the popup next to (x, y), or centered near the top when no position is given
+     */
+    function positionPopup(x, y) {
+        commentPopup.style.display = 'block';
+        if (x === undefined || y === undefined) {
+            commentPopup.style.left = '50%';
+            commentPopup.style.top = '30%';
+            commentPopup.style.transform = 'translateX(-50%)';
+        } else {
+            commentPopup.style.left = x + 'px';
+            commentPopup.style.top = y + 10 + 'px';
+            commentPopup.style.transform = 'none';
+        }
+    }
+
     function showCommentPopup(x, y) {
         // Setup for adding new comment
         const saveBtn = document.getElementById('comment-save');
@@ -459,9 +522,7 @@
         document.getElementById('comment-save').addEventListener('click', handleAddComment);
         document.getElementById('comment-cancel').addEventListener('click', hideCommentPopup);
 
-        commentPopup.style.display = 'block';
-        commentPopup.style.left = x + 'px';
-        commentPopup.style.top = y + 10 + 'px';
+        positionPopup(x, y);
 
         // Focus textarea without scrolling
         const textarea = document.getElementById('comment-text');
@@ -476,7 +537,8 @@
         const cancelBtn = document.getElementById('comment-cancel');
 
         saveBtn.textContent = 'Save';
-        deleteBtn.style.display = 'inline-block';
+        // Deleting is only offered for root comments, which own the highlight
+        deleteBtn.style.display = highlightElement ? 'inline-block' : 'none';
 
         // Remove old listeners
         saveBtn.replaceWith(saveBtn.cloneNode(true));
@@ -492,9 +554,7 @@
             .addEventListener('click', () => handleDeleteComment(comment, highlightElement));
         document.getElementById('comment-cancel').addEventListener('click', hideCommentPopup);
 
-        commentPopup.style.display = 'block';
-        commentPopup.style.left = x + 'px';
-        commentPopup.style.top = y + 10 + 'px';
+        positionPopup(x, y);
 
         // Pre-fill textarea with existing comment
         const textarea = document.getElementById('comment-text');
@@ -528,11 +588,8 @@
         document.getElementById('comment-save').addEventListener('click', () => handleAddReply(rootComment));
         document.getElementById('comment-cancel').addEventListener('click', hideCommentPopup);
 
-        commentPopup.style.display = 'block';
         // Position near the center of the screen
-        commentPopup.style.left = '50%';
-        commentPopup.style.top = '30%';
-        commentPopup.style.transform = 'translateX(-50%)';
+        positionPopup();
 
         // Focus textarea
         const textarea = document.getElementById('comment-text');
@@ -745,6 +802,10 @@
             });
 
             if (!response.ok) {
+                if (response.status === 409) {
+                    alert(await response.text());
+                    return;
+                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
@@ -758,9 +819,11 @@
                 }
             }
 
-            // Update the highlight element
-            highlightElement.dataset.commentText = updatedComment.comment_text;
-            highlightElement.title = updatedComment.comment_text;
+            // Update the highlight element (root comments only)
+            if (highlightElement) {
+                highlightElement.dataset.commentText = updatedComment.comment_text;
+                highlightElement.title = updatedComment.comment_text;
+            }
 
             // Update comment panel
             updateCommentPanel();
@@ -786,6 +849,10 @@
                 method: 'DELETE',
             });
 
+            if (response.status === 409) {
+                alert(await response.text());
+                return;
+            }
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -850,11 +917,13 @@
         highlight.addEventListener('click', (e) => {
             e.stopPropagation();
             // Only allow editing root comments without replies
-            if (!comment.root_id && !hasReply) {
+            if (!comment.root_id && !commentHasReplies(comment.id) && !isThreadClaimed(comment)) {
                 // Convert page coordinates to viewport coordinates for position: fixed popup
                 const x = e.clientX;
                 const y = e.clientY;
-                showEditCommentPopup(comment, highlight, x, y);
+                // Use the latest version, which may have been edited from the panel
+                const current = (comments || []).find((c) => c.id === comment.id) || comment;
+                showEditCommentPopup(current, highlight, x, y);
             }
         });
 
@@ -1026,6 +1095,16 @@
             console.log('Comments resolved event received:', event.data);
             const data = JSON.parse(event.data);
             triggerReload();
+        });
+
+        // Claude started processing this file's threads: lock editing without reloading
+        eventSource.addEventListener('threads_claimed', () => {
+            (comments || []).forEach((c) => {
+                if (!c.root_id) {
+                    c.claimed = true;
+                }
+            });
+            updateCommentPanel();
         });
 
         eventSource.addEventListener('reload', (event) => {

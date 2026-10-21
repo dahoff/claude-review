@@ -46,6 +46,7 @@ SQLite database stored at `~/.local/share/claude-review/comments.db`:
   - `root_id`: Foreign key to parent comment (NULL for root comments, enables threaded discussions)
   - `author`: Name of comment author (user or agent name)
   - `resolved_by`: Name of who resolved the thread
+  - `claimed_at`: Set on root comments by `address --claim` while the agent processes the thread, cleared by its reply; edits and deletes are refused (409) while a claim younger than `claimTTL` exists. Added to existing databases by `migrateDB`
 
 ### Custom Slash Commands
 - `/cr-review [path]` (in `slash-commands/cr-review.md`): Runs `claude-review review --file <path>` to start the server, register the project, and open the project root (or the given file/directory) in the browser
@@ -105,8 +106,8 @@ The server uses multiple mechanisms for real-time updates:
 - `claude-review server --status`: Check if daemon is running and show PID info
 - `claude-review register [--project <path>]`: Register a project directory (defaults to current directory)
 - `claude-review review [--file <path>]`: Start server, register project, and show the URL for the project root or the given file/directory. The project is detected as the deepest of the git toplevel (the worktree root inside a git worktree) and any registered project containing the target (see `project.go`)
-- `claude-review address [--file <path>] [--pending]`: Output unresolved comment threads (grouped by conversation) for a file, or for every file in the project grouped under `# File:` headers. `--pending` skips threads where the agent replied last
-- `claude-review reply --comment-id <id> --message <text>`: Reply to a comment thread
+- `claude-review address [--file <path>] [--pending]`: Output unresolved comment threads (grouped by conversation) for a file, or for every file in the project grouped under `# File:` headers. `--pending` skips threads where the agent replied last; `--claim` locks the listed threads against editing until the agent replies
+- `claude-review reply --comment-id <id> --message <text>`: Reply to a comment thread (releases the thread's claim)
 - `claude-review resolve --file <path>`: Mark all comments as resolved for file (relative or absolute path)
 - `claude-review resolve --comment-id <id>`: Mark a specific comment thread as resolved
 - `claude-review install`: Install slash commands to ~/.claude/commands/

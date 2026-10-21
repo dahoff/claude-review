@@ -40,6 +40,8 @@ in seconds rather than minutes.
    - It can discuss your feedback by replying to threads
    - It can make changes and resolve threads when complete
 5. Continue the discussion by adding replies to comment threads in the browser
+   - Use **Edit** on your latest message in a thread to change it. Editing is locked while Claude is processing
+     the thread, and unlocks once it replies
 6. Repeat steps 4-5 until the document matches your intent
 
 ## Requirements

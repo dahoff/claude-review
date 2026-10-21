@@ -6,7 +6,7 @@ allowed-tools: Bash(claude-review address:*), Bash(claude-review resolve:*), Bas
 
 --- COMMENTS START ---
 
-!`claude-review address --pending --file "$ARGUMENTS"`
+!`claude-review address --pending --claim --file "$ARGUMENTS"`
 
 --- COMMENTS END ---
 

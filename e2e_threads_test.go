@@ -3,6 +3,7 @@ package main_test
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -353,4 +354,80 @@ func TestE2E_ThreadedComments_CannotEditCommentWithReplies(t *testing.T) {
 		// If we got JSON, check the error message
 		t.Logf("Error response: %v", errorResp)
 	}
+}
+
+func TestE2E_ThreadedComments_EditLatestUserMessage(t *testing.T) {
+	env := setupE2E(t)
+	_, err := env.runCLI(t, "register", "--project", env.ProjectDir)
+	require.NoError(t, err)
+
+	create := func(payload map[string]interface{}) int {
+		resp := env.postJSON(t, "/api/comments", payload)
+		defer func() { _ = resp.Body.Close() }()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		var created map[string]interface{}
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&created))
+		return int(created["id"].(float64))
+	}
+	edit := func(id int, text string) int {
+		resp := env.patchJSON(t, fmt.Sprintf("/api/comments/%d", id), map[string]string{"comment_text": text})
+		_ = resp.Body.Close()
+		return resp.StatusCode
+	}
+
+	rootID := create(map[string]interface{}{
+		"project_directory": env.ProjectDir,
+		"file_path":         "test.md",
+		"line_start":        1,
+		"line_end":          1,
+		"selected_text":     "Test Document",
+		"comment_text":      "Root",
+	})
+	_, err = env.runCLI(t, "reply", "--comment-id", fmt.Sprintf("%d", rootID), "--message", "Agent reply")
+	require.NoError(t, err)
+	agentReplyID := rootID + 1
+	userReplyID := create(map[string]interface{}{
+		"project_directory": env.ProjectDir,
+		"file_path":         "test.md",
+		"root_id":           rootID,
+		"comment_text":      "User reply",
+	})
+
+	t.Run("latest user reply is editable", func(t *testing.T) {
+		assert.Equal(t, http.StatusOK, edit(userReplyID, "User reply, edited"))
+	})
+
+	t.Run("earlier messages and agent messages are not", func(t *testing.T) {
+		assert.Equal(t, http.StatusBadRequest, edit(rootID, "Nope"))
+		assert.Equal(t, http.StatusForbidden, edit(agentReplyID, "Nope"))
+	})
+
+	t.Run("claimed thread is locked until the agent replies", func(t *testing.T) {
+		output, err := env.runCLI(t, "address", "--pending", "--claim", "--project", env.ProjectDir)
+		require.NoError(t, err)
+		assert.Contains(t, output, "User reply, edited")
+
+		// The page reports the claim on the root comment
+		resp, err := http.Get(env.BaseURL + "/projects" + env.ProjectDir + "/test.md")
+		require.NoError(t, err)
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		assert.Contains(t, string(body), `"claimed":true`)
+
+		assert.Equal(t, http.StatusConflict, edit(userReplyID, "Locked"))
+		deleteResp := env.delete(t, fmt.Sprintf("/api/comments/%d", userReplyID))
+		_ = deleteResp.Body.Close()
+		assert.Equal(t, http.StatusConflict, deleteResp.StatusCode)
+
+		// The agent's reply releases the claim
+		_, err = env.runCLI(t, "reply", "--comment-id", fmt.Sprintf("%d", rootID), "--message", "Done")
+		require.NoError(t, err)
+		newUserReplyID := create(map[string]interface{}{
+			"project_directory": env.ProjectDir,
+			"file_path":         "test.md",
+			"root_id":           rootID,
+			"comment_text":      "Follow-up",
+		})
+		assert.Equal(t, http.StatusOK, edit(newUserReplyID, "Follow-up, edited"))
+	})
 }

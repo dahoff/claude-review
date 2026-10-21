@@ -39,6 +39,49 @@ type Comment struct {
 	RootID           *int       `json:"root_id,omitempty"`
 	Author           string     `json:"author"`
 	ResolvedBy       *string    `json:"resolved_by,omitempty"`
+	ClaimedAt        *time.Time `json:"-"`
+	Claimed          bool       `json:"claimed,omitempty"` // Root only: the agent is processing this thread
+}
+
+// claimTTL bounds how long an agent claim on a thread lasts, so a thread whose
+// processing was abandoned becomes editable again.
+const claimTTL = 15 * time.Minute
+
+const commentColumns = "id, project_directory, file_path, line_start, line_end, selected_text, comment_text, created_at, resolved_at, root_id, author, resolved_by, claimed_at"
+
+type rowScanner interface {
+	Scan(dest ...interface{}) error
+}
+
+func scanComment(row rowScanner) (Comment, error) {
+	var c Comment
+	err := row.Scan(
+		&c.ID, &c.ProjectDirectory, &c.FilePath, &c.LineStart, &c.LineEnd,
+		&c.SelectedText, &c.CommentText, &c.CreatedAt,
+		&c.ResolvedAt, &c.RootID, &c.Author, &c.ResolvedBy, &c.ClaimedAt,
+	)
+	c.Claimed = c.ClaimedAt != nil && time.Since(*c.ClaimedAt) < claimTTL
+	return c, err
+}
+
+func queryComments(query string, args ...interface{}) ([]Comment, error) {
+	logQuery(query, args...)
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var comments []Comment
+	for rows.Next() {
+		c, err := scanComment(rows)
+		if err != nil {
+			return nil, err
+		}
+		comments = append(comments, c)
+	}
+
+	return comments, rows.Err()
 }
 
 var db *sql.DB
@@ -100,6 +143,7 @@ func initDB() error {
 		root_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
 		author TEXT CHECK(author IN ('user', 'agent')),
 		resolved_by TEXT,
+		claimed_at TIMESTAMP,
 		FOREIGN KEY (project_directory) REFERENCES projects(directory)
 	);
 
@@ -112,6 +156,24 @@ func initDB() error {
 		return fmt.Errorf("failed to create schema: %w", err)
 	}
 
+	return migrateDB()
+}
+
+// migrateDB adds columns introduced after a database was created.
+func migrateDB() error {
+	var count int
+	query := "SELECT COUNT(*) FROM pragma_table_info('comments') WHERE name = 'claimed_at'"
+	logQuery(query)
+	if err := db.QueryRow(query).Scan(&count); err != nil {
+		return fmt.Errorf("failed to inspect schema: %w", err)
+	}
+	if count == 0 {
+		query = "ALTER TABLE comments ADD COLUMN claimed_at TIMESTAMP"
+		logQuery(query)
+		if _, err := db.Exec(query); err != nil {
+			return fmt.Errorf("failed to add claimed_at column: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -202,37 +264,17 @@ func createComment(c *Comment) error {
 }
 
 func getComments(projectDir, filePath string, resolved bool) ([]Comment, error) {
-	var query string
+	resolvedFilter := "resolved_at IS NULL"
 	if resolved {
-		query = `
-			SELECT id, project_directory, file_path, line_start, line_end, selected_text, comment_text, created_at, resolved_at, root_id, author, resolved_by
-			FROM comments
-			WHERE project_directory = ? AND file_path = ? AND resolved_at IS NOT NULL
-			ORDER BY COALESCE(root_id, id) ASC, created_at ASC`
-	} else {
-		query = `
-			SELECT id, project_directory, file_path, line_start, line_end, selected_text, comment_text, created_at, resolved_at, root_id, author, resolved_by
-			FROM comments
-			WHERE project_directory = ? AND file_path = ? AND resolved_at IS NULL
-			ORDER BY COALESCE(root_id, id) ASC, created_at ASC`
+		resolvedFilter = "resolved_at IS NOT NULL"
 	}
-	logQuery(query, projectDir, filePath)
-	rows, err := db.Query(query, projectDir, filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-
-	var comments []Comment
-	for rows.Next() {
-		var c Comment
-		if err := rows.Scan(&c.ID, &c.ProjectDirectory, &c.FilePath, &c.LineStart, &c.LineEnd, &c.SelectedText, &c.CommentText, &c.CreatedAt, &c.ResolvedAt, &c.RootID, &c.Author, &c.ResolvedBy); err != nil {
-			return nil, err
-		}
-		comments = append(comments, c)
-	}
-
-	return comments, nil
+	return queryComments(`
+		SELECT `+commentColumns+`
+		FROM comments
+		WHERE project_directory = ? AND file_path = ? AND `+resolvedFilter+`
+		ORDER BY COALESCE(root_id, id) ASC, created_at ASC`,
+		projectDir, filePath,
+	)
 }
 
 // getProjectComments returns comments across all files of a project, ordered by
@@ -242,28 +284,13 @@ func getProjectComments(projectDir string, resolved bool) ([]Comment, error) {
 	if resolved {
 		resolvedFilter = "resolved_at IS NOT NULL"
 	}
-	query := `
-		SELECT id, project_directory, file_path, line_start, line_end, selected_text, comment_text, created_at, resolved_at, root_id, author, resolved_by
+	return queryComments(`
+		SELECT `+commentColumns+`
 		FROM comments
-		WHERE project_directory = ? AND ` + resolvedFilter + `
-		ORDER BY file_path ASC, COALESCE(root_id, id) ASC, created_at ASC`
-	logQuery(query, projectDir)
-	rows, err := db.Query(query, projectDir)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-
-	var comments []Comment
-	for rows.Next() {
-		var c Comment
-		if err := rows.Scan(&c.ID, &c.ProjectDirectory, &c.FilePath, &c.LineStart, &c.LineEnd, &c.SelectedText, &c.CommentText, &c.CreatedAt, &c.ResolvedAt, &c.RootID, &c.Author, &c.ResolvedBy); err != nil {
-			return nil, err
-		}
-		comments = append(comments, c)
-	}
-
-	return comments, nil
+		WHERE project_directory = ? AND `+resolvedFilter+`
+		ORDER BY file_path ASC, COALESCE(root_id, id) ASC, created_at ASC`,
+		projectDir,
+	)
 }
 
 // getUnresolvedThreadCounts returns the number of unresolved threads per file of a project.
@@ -332,18 +359,10 @@ func resolveComments(projectDir, filePath string) (int, error) {
 }
 
 func getCommentByID(commentID int) (*Comment, error) {
-	query := `
-		SELECT id, project_directory, file_path, line_start, line_end, selected_text, comment_text, created_at, resolved_at, root_id, author, resolved_by
-		FROM comments
-		WHERE id = ?`
+	query := `SELECT ` + commentColumns + ` FROM comments WHERE id = ?`
 	logQuery(query, commentID)
 
-	var c Comment
-	err := db.QueryRow(query, commentID).Scan(
-		&c.ID, &c.ProjectDirectory, &c.FilePath, &c.LineStart, &c.LineEnd,
-		&c.SelectedText, &c.CommentText, &c.CreatedAt,
-		&c.ResolvedAt, &c.RootID, &c.Author, &c.ResolvedBy,
-	)
+	c, err := scanComment(db.QueryRow(query, commentID))
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -373,18 +392,42 @@ func resolveThread(rootCommentID int, resolvedBy string) (int, error) {
 	return int(count), nil
 }
 
-func hasReplies(commentID int) (bool, error) {
+// isLastInThread reports whether no later message exists in the comment's thread.
+func isLastInThread(c *Comment) (bool, error) {
+	rootID := c.ID
+	if c.RootID != nil {
+		rootID = *c.RootID
+	}
 	query := `
-		SELECT COUNT(*) FROM comments WHERE root_id = ?`
-	logQuery(query, commentID)
+		SELECT COUNT(*) FROM comments WHERE (id = ? OR root_id = ?) AND id > ?`
+	logQuery(query, rootID, rootID, c.ID)
 
 	var count int
-	err := db.QueryRow(query, commentID).Scan(&count)
-	if err != nil {
+	if err := db.QueryRow(query, rootID, rootID, c.ID).Scan(&count); err != nil {
 		return false, err
 	}
 
-	return count > 0, nil
+	return count == 0, nil
+}
+
+// claimThreads marks root comments as being processed by the agent.
+func claimThreads(rootIDs []int) error {
+	for _, id := range rootIDs {
+		query := `UPDATE comments SET claimed_at = ? WHERE id = ?`
+		logQuery(query, id)
+		if _, err := db.Exec(query, time.Now(), id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// releaseThread clears the agent's claim on a thread.
+func releaseThread(rootID int) error {
+	query := `UPDATE comments SET claimed_at = NULL WHERE id = ?`
+	logQuery(query, rootID)
+	_, err := db.Exec(query, rootID)
+	return err
 }
 
 // renderCommentsAsHTML renders the comment_text field of each comment as HTML

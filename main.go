@@ -253,6 +253,7 @@ func runAddress() {
 	projectFlag := addressCmd.String("project", "", "Project directory")
 	filePath := addressCmd.String("file", "", "File path (defaults to all files in the project)")
 	pending := addressCmd.Bool("pending", false, "Only show threads awaiting an agent response")
+	claim := addressCmd.Bool("claim", false, "Lock the listed threads against editing in the browser until the agent replies")
 
 	if err := addressCmd.Parse(os.Args[2:]); err != nil {
 		log.Fatalf("Failed to parse flags: %v", err)
@@ -299,6 +300,10 @@ func runAddress() {
 		}
 	}
 
+	if *claim {
+		claimAndNotify(threads)
+	}
+
 	if relPath != "" {
 		fmt.Printf("Found %d unresolved comment(s) for %s:\n\n", len(threads), relPath)
 		printThreads(threads)
@@ -324,6 +329,25 @@ func runAddress() {
 	for _, file := range files {
 		fmt.Printf("\n# File: %s\n\n", filepath.Join(projectDir, file))
 		printThreads(threadsByFile[file])
+	}
+}
+
+// claimAndNotify marks threads as being processed by the agent and tells open
+// browsers, so they disable their edit buttons without reloading.
+func claimAndNotify(threads [][]Comment) {
+	rootIDs := make([]int, 0, len(threads))
+	files := make(map[string]bool)
+	for _, thread := range threads {
+		rootIDs = append(rootIDs, thread[0].ID)
+		files[thread[0].FilePath] = true
+	}
+
+	if err := claimThreads(rootIDs); err != nil {
+		log.Fatalf("Failed to claim threads: %v", err)
+	}
+
+	for file := range files {
+		notifyServer(threads[0][0].ProjectDirectory, file, "threads_claimed")
 	}
 }
 
@@ -463,6 +487,11 @@ func runReply() {
 
 	if err := createComment(reply); err != nil {
 		log.Fatalf("Failed to create reply: %v", err)
+	}
+
+	// The agent has responded, so the user may edit the thread again
+	if err := releaseThread(parentComment.ID); err != nil {
+		log.Fatalf("Failed to release thread: %v", err)
 	}
 
 	fmt.Printf("Reply added to comment %d\n", *commentID)
