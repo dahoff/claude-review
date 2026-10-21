@@ -210,7 +210,8 @@ func RenderMarkdownWithLineNumbers(source []byte) ([]byte, error) {
 	return html, nil
 }
 
-// RenderMarkdown renders markdown to HTML without line number attributes
+// RenderMarkdown renders markdown to HTML without line number attributes.
+// Raw HTML is omitted, since comment text can come from untrusted sources.
 func RenderMarkdown(source []byte) ([]byte, error) {
 	md := goldmark.New(
 		goldmark.WithExtensions(
@@ -218,9 +219,6 @@ func RenderMarkdown(source []byte) ([]byte, error) {
 			highlighting.NewHighlighting(
 				highlighting.WithStyle("friendly"),
 			),
-		),
-		goldmark.WithRendererOptions(
-			gmhtml.WithUnsafe(), // Allow raw HTML
 		),
 	)
 

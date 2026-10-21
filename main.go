@@ -124,10 +124,16 @@ func runServer() {
 		_ = fileWatcher.close()
 	}()
 
+	port := os.Getenv("CR_LISTEN_PORT")
+	if port == "" {
+		port = "4779"
+	}
+
 	// Setup router
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(localOriginOnly(port))
 
 	// HTML Routes
 	r.Get("/", handleHome)
@@ -149,10 +155,6 @@ func runServer() {
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(staticSubFS))))
 
 	// Start server
-	port := os.Getenv("CR_LISTEN_PORT")
-	if port == "" {
-		port = "4779"
-	}
 	if !*daemonChild {
 		fmt.Printf("Starting server on http://localhost:%s\n", port)
 	}
@@ -258,6 +260,7 @@ func runAddress() {
 	reviewCmd := flag.NewFlagSet("address", flag.ExitOnError)
 	projectDir := reviewCmd.String("project", "", "Project directory")
 	filePath := reviewCmd.String("file", "", "File path relative to project directory")
+	pending := reviewCmd.Bool("pending", false, "Only show threads awaiting an agent response")
 
 	if err := reviewCmd.Parse(os.Args[2:]); err != nil {
 		log.Fatalf("Failed to parse flags: %v", err)
@@ -303,6 +306,14 @@ func runAddress() {
 	// Group comments by thread (root comments and their replies)
 	threads := groupCommentsByThread(comments)
 
+	if *pending {
+		threads = filterPendingThreads(threads)
+		if len(threads) == 0 {
+			fmt.Printf("No unresolved comments awaiting a response for %s\n", *filePath)
+			return
+		}
+	}
+
 	fmt.Printf("Found %d unresolved comment(s) for %s:\n\n", len(threads), *filePath)
 
 	for threadIndex, thread := range threads {
@@ -341,6 +352,17 @@ func runAddress() {
 			fmt.Printf("\n---\n\n")
 		}
 	}
+}
+
+// filterPendingThreads drops threads where the agent wrote the last message.
+func filterPendingThreads(threads [][]Comment) [][]Comment {
+	pending := make([][]Comment, 0, len(threads))
+	for _, thread := range threads {
+		if thread[len(thread)-1].Author != "agent" {
+			pending = append(pending, thread)
+		}
+	}
+	return pending
 }
 
 func groupCommentsByThread(comments []Comment) [][]Comment {

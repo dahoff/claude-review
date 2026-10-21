@@ -62,7 +62,7 @@
             <div class="comment-panel-list"></div>
         </div>
 
-        <script>
+        <script nonce="{{.Nonce}}">
             // Template variables from Go backend
             const projectDir = {{.ProjectDir | json}};
             const filePath = {{.FilePath | json}};

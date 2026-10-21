@@ -108,8 +108,12 @@ func handleProjectFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build absolute path
+	// Build absolute path, rejecting ".." segments that escape the project
 	absPath := filepath.Join(project, childPath)
+	if !isWithinDir(project, absPath) {
+		http.NotFound(w, r)
+		return
+	}
 
 	// Check if path exists
 	info, err := os.Stat(absPath)
@@ -171,11 +175,19 @@ func renderViewer(w http.ResponseWriter, r *http.Request, projectDir, filePath s
 		return
 	}
 
+	nonce, err := newNonce()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Security-Policy", contentSecurityPolicy(nonce))
+
 	data := map[string]interface{}{
 		"ProjectDir":  projectDir,
 		"FilePath":    filePath,
 		"HTMLContent": template.HTML(html),
 		"Comments":    comments,
+		"Nonce":       nonce,
 	}
 
 	if err := templates.ExecuteTemplate(w, "viewer.html", data); err != nil {
