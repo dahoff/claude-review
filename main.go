@@ -203,6 +203,7 @@ func runReview() {
 	reviewCmd := flag.NewFlagSet("review", flag.ExitOnError)
 	projectFlag := reviewCmd.String("project", "", "Project directory (defaults to the git root or registered project)")
 	filePath := reviewCmd.String("file", "", "File or directory to open (defaults to the project root)")
+	diff := reviewCmd.Bool("diff", false, "Open the project's changes (git diff) instead of a file")
 
 	if err := reviewCmd.Parse(os.Args[2:]); err != nil {
 		log.Fatalf("Failed to parse flags: %v", err)
@@ -236,8 +237,14 @@ func runReview() {
 		port = "4779"
 	}
 
-	reviewURL := fmt.Sprintf("http://localhost:%s/projects%s/", port, escapePathComponents(projectDir))
 	name := filepath.Base(projectDir)
+	if *diff {
+		reviewURL := fmt.Sprintf("http://localhost:%s/compare%s", port, escapePathComponents(projectDir))
+		fmt.Printf("Open this URL in your browser to review changes in %s:\n\n%s\n", name, reviewURL)
+		return
+	}
+
+	reviewURL := fmt.Sprintf("http://localhost:%s/projects%s/", port, escapePathComponents(projectDir))
 	if relPath != "" {
 		reviewURL += escapePathComponents(relPath)
 		name = relPath

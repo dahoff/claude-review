@@ -33,11 +33,16 @@ claude-review is a lightweight companion for working on planning documents with 
 - **version.go**: Version information
 - **install.go**: Slash command installation and full uninstallation (server, slash commands, binary, optionally data)
 - **embed.go**: Embedded frontend assets
+- **git.go**: Git helpers (branches, commits, default base) and `resolveComparison`, which turns the compare page's
+  mode/base/commit query into revisions
+- **diff.go**: Changed-file listing, unified-diff parsing into split rows, and folding of unchanged context
+- **compare.go**: `/compare/<project>` handler; places comment threads on diff lines, under a file, or in "other files"
 
 ### Frontend
-- **frontend/templates/**: Go HTML templates (viewer.html, directory.html, index.html)
+- **frontend/templates/**: Go HTML templates (viewer.html, directory.html, index.html, compare.html)
 - **frontend/static/**: CSS and JavaScript for the web UI
 - **viewer.js**: Handles text selection, comment creation/editing, SSE connection for live updates
+- **compare.js**: Compare page: right-side selection to comment, inline threads, gap expansion, live reload
 
 ### Database Schema
 SQLite database stored at `~/.local/share/claude-review/comments.db`:
@@ -50,6 +55,7 @@ SQLite database stored at `~/.local/share/claude-review/comments.db`:
 
 ### Custom Slash Commands
 - `/cr-review [path]` (in `slash-commands/cr-review.md`): Runs `claude-review review --file <path>` to start the server, register the project, and open the project root (or the given file/directory) in the browser
+- `/cr-diff` (in `slash-commands/cr-diff.md`): Runs `claude-review review --diff` to open the project's compare page
 - `/cr-address [file]` (in `slash-commands/cr-address.md`): Runs `claude-review address --pending --file <file>` to fetch unresolved comment threads awaiting a response, with full conversation history, for every file in the project when no file is given. Instructs Claude Code to either reply to threads for discussion or make changes and resolve threads when requests are clear
 
 ## Development Commands
@@ -99,6 +105,16 @@ The server uses multiple mechanisms for real-time updates:
 - **File System Watching**: Uses fsnotify to watch Markdown files and automatically reload the browser when files are modified
 - **Event Broadcasting**: CLI commands (like `resolve`) notify the server via HTTP POST to `/api/events`, which triggers SSE broadcasts to connected clients
 
+### Diff Review
+`/compare/<project>` shows split, side-by-side source diffs for git projects in three modes (query `mode`):
+`uncommitted` (working tree incl. untracked files vs HEAD), `base` (working tree vs the merge base with the local branch
+`base`, default from origin/HEAD, else main/master) and `commit` (`commit` vs its parent, read-only). With no mode it
+picks `base` when the current branch is ahead of the default base. Git runs in the project directory with
+`--relative`, so a project below the git root sees only its own files with project-relative paths. Diffs are computed
+with full context and folded server-side (3 context lines; lines with comments stay visible). All git calls go through
+`gitOutput`; revisions are resolved to SHAs before use and branches must be local branches. The page subscribes to
+SSE with `scope=project` and one `watch` parameter per changed file; file watches are reference counted.
+
 ### CLI Commands
 - `claude-review server`: Start web server on port 4779 in foreground
 - `claude-review server --daemon`: Start web server as a background daemon
@@ -106,6 +122,7 @@ The server uses multiple mechanisms for real-time updates:
 - `claude-review server --status`: Check if daemon is running and show PID info
 - `claude-review register [--project <path>]`: Register a project directory (defaults to current directory)
 - `claude-review review [--file <path>]`: Start server, register project, and show the URL for the project root or the given file/directory. The project is detected as the deepest of the git toplevel (the worktree root inside a git worktree) and any registered project containing the target (see `project.go`)
+- `claude-review review --diff`: Like `review`, but shows the URL of the project's compare page (`/compare<project>`)
 - `claude-review address [--file <path>] [--pending]`: Output unresolved comment threads (grouped by conversation) for a file, or for every file in the project grouped under `# File:` headers. `--pending` skips threads where the agent replied last; `--claim` locks the listed threads against editing until the agent replies
 - `claude-review reply --comment-id <id> --message <text>`: Reply to a comment thread (releases the thread's claim)
 - `claude-review resolve --file <path>`: Mark all comments as resolved for file (relative or absolute path)

@@ -71,7 +71,12 @@
    # Claude Code addresses them and marks as resolved
    ```
 
-4. **Real-time sync**:
+4. **Reviewing changes** (in browser, git projects only):
+   - `/cr-diff` or the **Changes** link opens `/compare/<project>`: a split diff of uncommitted changes, changes
+     since a base branch, or a single commit, computed by running `git` in the project directory
+   - Line comments on the diff use the same comments table, so `/cr-address` handles them like any other
+
+5. **Real-time sync**:
    - File changes -> Daemon watches files and sends SSE -> Page content refreshes
    - Comments resolved -> Daemon sends SSE -> Page content refreshes
 

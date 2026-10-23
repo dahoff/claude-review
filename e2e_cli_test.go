@@ -197,6 +197,13 @@ func TestE2E_CLI_Review(t *testing.T) {
 		assert.Contains(t, output, fmt.Sprintf("http://localhost:%s/projects%s/\n", env.Port, env.ProjectDir))
 	})
 
+	t.Run("review --diff prints the compare URL", func(t *testing.T) {
+		output, err := env.runCLI(t, "review", "--diff", "--project", env.ProjectDir)
+		require.NoError(t, err)
+		assert.Contains(t, output, "review changes in project:")
+		assert.Contains(t, output, fmt.Sprintf("http://localhost:%s/compare%s\n", env.Port, env.ProjectDir))
+	})
+
 	t.Run("review detects git root from a subdirectory", func(t *testing.T) {
 		repo := filepath.Join(tempDir, "repo")
 		subDir := filepath.Join(repo, "docs")
@@ -341,6 +348,7 @@ func TestE2E_CLI_Install(t *testing.T) {
 		// Verify expected commands exist
 		assert.Contains(t, foundCommands, "cr-review.md")
 		assert.Contains(t, foundCommands, "cr-address.md")
+		assert.Contains(t, foundCommands, "cr-diff.md")
 
 		// Verify output lists the installed commands
 		assert.Contains(t, outputStr, "/cr-review")

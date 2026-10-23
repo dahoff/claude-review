@@ -44,6 +44,20 @@ in seconds rather than minutes.
      the thread, and unlocks once it replies
 6. Repeat steps 4-5 until the document matches your intent
 
+### Reviewing changes
+
+In a git project, run `/cr-diff` (or click **Changes** on any project page) to review only what changed, GitHub
+style, as a side-by-side source diff of every changed file, Markdown or code:
+
+- **Uncommitted**: your working tree, including untracked files, against the last commit
+- **Since base**: everything on your branch or worktree, including uncommitted edits, against the point where it
+  split from a base branch you pick (defaults to `main`)
+- **Single commit**: what one commit changed (read-only)
+
+Select lines on the right-hand side to comment on them. These comments work like any other: `/cr-address` picks them
+up, and Claude can reply and resolve them. Comments on files that are not in the current diff are listed at the
+bottom of the page.
+
 ## Requirements
 
 - Linux or macOS
@@ -64,7 +78,7 @@ cd claude-review
 
 The installer will:
 - Build the `claude-review` binary from the checkout and install it to `~/.local/bin/`
-- Install the `/cr-review` and `/cr-address` slash commands to `~/.claude/commands/`
+- Install the `/cr-review`, `/cr-diff` and `/cr-address` slash commands to `~/.claude/commands/`
 - Restart the server if it was running
 
 To upgrade, pull the latest changes and run `./install.sh` again.
@@ -93,7 +107,7 @@ export PATH="$HOME/.local/bin:$PATH"
 claude-review uninstall
 ```
 
-This stops the server if it's running, removes the `/cr-review` and `/cr-address` slash commands
+This stops the server if it's running, removes the `/cr-review`, `/cr-diff` and `/cr-address` slash commands
 from `~/.claude/commands/`, and removes the binary from `~/.local/bin/`.
 
 Your comments database and logs in `~/.local/share/claude-review` are kept. To delete them too:
