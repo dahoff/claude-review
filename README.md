@@ -52,19 +52,26 @@ in seconds rather than minutes.
 
 ## Installation
 
-### Automated (recommended)
+### From source (recommended)
+
+Requires [Go](https://go.dev/doc/install) and a C compiler (CGO is used for SQLite).
 
 ```bash
-curl -fsSL https://github.com/Ch00k/claude-review/releases/latest/download/install.sh | bash
+git clone https://github.com/dahoff/claude-review.git
+cd claude-review
+./install.sh
 ```
 
 The installer will:
-- Download and install the `claude-review` binary to `~/.local/bin/`
+- Build the `claude-review` binary from the checkout and install it to `~/.local/bin/`
 - Install the `/cr-review` and `/cr-address` slash commands to `~/.claude/commands/`
+- Restart the server if it was running
 
-### Manual
+To upgrade, pull the latest changes and run `./install.sh` again.
 
-1. Download the binary for your platform from the [latest release](https://github.com/Ch00k/claude-review/releases/latest)
+### Prebuilt binary
+
+1. Download the binary for your platform from the [latest release](https://github.com/dahoff/claude-review/releases/latest)
 2. Make it executable and move it to your PATH:
    ```bash
    chmod +x claude-review-<os>-<arch>

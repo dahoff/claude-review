@@ -124,5 +124,4 @@ jobs:
         with:
           files: |
             ./dist/claude-review-${{ matrix.goos }}-${{ matrix.goarch }}
-            ${{ matrix.goos == 'linux' && matrix.goarch == 'amd64' && './install.sh' || '' }}
           generate_release_notes: true

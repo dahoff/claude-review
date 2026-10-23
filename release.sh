@@ -60,7 +60,9 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 
     echo "Release $NEW_VERSION created successfully!"
     echo "Binary build will start automatically via GitHub Actions."
-    echo "Monitor at https://github.com/Ch00k/claude-review/actions"
+    # Derive owner/repo from origin (git@github.com:owner/repo.git or https://github.com/owner/repo.git)
+    REPO_SLUG=$(git remote get-url origin | sed -E 's#^(git@|https://)github\.com[:/]##; s#\.git$##')
+    echo "Monitor at https://github.com/$REPO_SLUG/actions"
 else
     echo "Release cancelled"
 fi
