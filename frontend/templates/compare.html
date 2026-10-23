@@ -32,7 +32,14 @@
                     href="?mode=base{{with .DefaultBase}}&base={{. | urlquery}}{{end}}"
                     >Since base</a
                 >
-                {{if .Commits}}
+                {{with .SinceDefault}}
+                <a
+                    class="compare-mode{{if eq $c.Mode `since`}} active{{end}}"
+                    data-mode="since"
+                    href="?mode=since&commit={{.}}"
+                    >Since commit</a
+                >
+                {{end}} {{if .Commits}}
                 <a
                     class="compare-mode{{if eq $c.Mode `commit`}} active{{end}}"
                     data-mode="commit"
@@ -50,6 +57,21 @@
                     <select name="base">
                         {{range .Branches}}
                         <option value="{{.}}" {{if eq . $c.BaseBranch}}selected{{end}}>{{.}}</option>
+                        {{end}}
+                    </select>
+                </label>
+                <button type="submit" class="compare-picker-submit">Show</button>
+            </form>
+            {{else if eq $c.Mode "since"}}
+            <form class="compare-picker" method="get">
+                <input type="hidden" name="mode" value="since" />
+                <label>
+                    Current files compared with
+                    <select name="commit">
+                        {{range .Commits}}
+                        <option value="{{.SHA}}" {{if eq .SHA $c.Commit}}selected{{end}}>
+                            {{.ShortSHA}} {{.Subject}}
+                        </option>
                         {{end}}
                     </select>
                 </label>

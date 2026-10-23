@@ -156,6 +156,43 @@ func TestE2E_Compare_Commit(t *testing.T) {
 	assert.Equal(t, "true", bootstrapValue(t, body, "readOnly"))
 }
 
+func TestE2E_Compare_SinceCommit(t *testing.T) {
+	env := setupE2E(t)
+	setupGitProject(t, env)
+	writeProjectFile(t, env, "one.go", "package one\n")
+	commitAll(t, env, "one")
+	sha := gitHead(t, env.ProjectDir)
+	writeProjectFile(t, env, "two.go", "package two\n")
+	commitAll(t, env, "two")
+	writeProjectFile(t, env, "three.go", "package three\n")
+
+	status, body := getCompare(t, env, "mode=since&commit="+sha)
+	require.Equal(t, http.StatusOK, status)
+	assert.NotContains(t, body, `data-path="one.go"`)
+	assert.Contains(t, body, `data-path="two.go"`)
+	assert.Contains(t, body, `data-path="three.go"`)
+	assert.Equal(t, `"since"`, bootstrapValue(t, body, "compareMode"))
+	assert.Equal(t, "false", bootstrapValue(t, body, "readOnly"))
+	assert.Contains(t, body, `<option value="`+sha+`" selected`)
+
+	commentID := createComment(t, env, "two.go", 1)
+	_, body = getCompare(t, env, "mode=since&commit="+sha)
+	assert.Equal(t, "line", placementsOf(t, body)[fmt.Sprint(commentID)].Where)
+}
+
+func TestE2E_Compare_SinceCommitLinkDefaultsToParentOfHead(t *testing.T) {
+	env := setupE2E(t)
+	setupGitProject(t, env)
+	writeProjectFile(t, env, "one.go", "package one\n")
+	commitAll(t, env, "one")
+	parent := gitHead(t, env.ProjectDir)
+	writeProjectFile(t, env, "two.go", "package two\n")
+	commitAll(t, env, "two")
+
+	_, body := getCompare(t, env, "mode=uncommitted")
+	assert.Contains(t, body, `href="?mode=since&commit=`+parent+`"`)
+}
+
 func TestE2E_Compare_DefaultMode(t *testing.T) {
 	env := setupE2E(t)
 	setupGitProject(t, env)
@@ -179,6 +216,8 @@ func TestE2E_Compare_InvalidQuery(t *testing.T) {
 		"mode=base&base=nope",
 		"mode=base&base=" + url.QueryEscape("../../etc"),
 		"mode=commit&commit=" + url.QueryEscape("--output="+outFile),
+		"mode=since&commit=" + url.QueryEscape("--output="+outFile),
+		"mode=since&commit=deadbeef",
 	} {
 		status, _ := getCompare(t, env, query)
 		assert.Equal(t, http.StatusBadRequest, status, query)

@@ -108,9 +108,10 @@ The server uses multiple mechanisms for real-time updates:
 - **Event Broadcasting**: CLI commands (like `resolve`) notify the server via HTTP POST to `/api/events`, which triggers SSE broadcasts to connected clients
 
 ### Diff Review
-`/compare/<project>` shows split, side-by-side source diffs for git projects in three modes (query `mode`):
+`/compare/<project>` shows split, side-by-side source diffs for git projects in four modes (query `mode`):
 `uncommitted` (working tree incl. untracked files vs HEAD), `base` (working tree vs the merge base with the local branch
-`base`, default from origin/HEAD, else main/master) and `commit` (`commit` vs its parent, read-only). With no mode it
+`base`, default from origin/HEAD, else main/master), `since` (working tree vs `commit`) and `commit` (`commit` vs its
+parent, read-only). With no mode it
 picks `base` when the current branch is ahead of the default base. Git runs in the project directory with
 `--relative`, so a project below the git root sees only its own files with project-relative paths. Diffs are computed
 with full context and folded server-side (3 context lines; lines with comments stay visible). All git calls go through

@@ -108,6 +108,20 @@ func TestResolveComparison_Commit(t *testing.T) {
 	assert.True(t, c.ReadOnly)
 }
 
+func TestResolveComparison_Since(t *testing.T) {
+	dir := newTestRepo(t)
+	first := commitFile(t, dir, "a.txt", "a\n", "first")
+	commitFile(t, dir, "a.txt", "b\n", "second")
+
+	c, err := resolveComparison(dir, ModeSince, "", first[:7])
+	require.NoError(t, err)
+	assert.Equal(t, ModeSince, c.Mode)
+	assert.Equal(t, first, c.Commit)
+	assert.Equal(t, first, c.BaseRev)
+	assert.Equal(t, "", c.TargetRev)
+	assert.False(t, c.ReadOnly)
+}
+
 func TestResolveComparison_RootCommit(t *testing.T) {
 	dir := newTestRepo(t)
 	first := commitFile(t, dir, "a.txt", "a\n", "first")
@@ -149,6 +163,9 @@ func TestResolveComparison_InvalidInput(t *testing.T) {
 		{"option-like commit", ModeCommit, "", "--output=" + outFile},
 		{"nonexistent commit", ModeCommit, "", "deadbeef"},
 		{"empty commit", ModeCommit, "", ""},
+		{"option-like since commit", ModeSince, "", "--output=" + outFile},
+		{"nonexistent since commit", ModeSince, "", "deadbeef"},
+		{"empty since commit", ModeSince, "", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

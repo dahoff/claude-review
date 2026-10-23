@@ -52,6 +52,8 @@ style, as a side-by-side source diff of every changed file, Markdown or code:
 - **Uncommitted**: your working tree, including untracked files, against the last commit
 - **Since base**: everything on your branch or worktree, including uncommitted edits, against the point where it
   split from a base branch you pick (defaults to `main`)
+- **Since commit**: everything since a commit you pick, including uncommitted edits (defaults to the commit before
+  the latest one)
 - **Single commit**: what one commit changed (read-only)
 
 Select lines on the right-hand side to comment on them. These comments work like any other: `/cr-address` picks them

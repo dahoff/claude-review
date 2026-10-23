@@ -18,6 +18,7 @@ const (
 	ModeUncommitted = "uncommitted"
 	ModeBase        = "base"
 	ModeCommit      = "commit"
+	ModeSince       = "since"
 )
 
 // errInvalidComparison marks user input (mode, branch, commit) that cannot be compared.
@@ -27,7 +28,7 @@ var errInvalidComparison = errors.New("invalid comparison")
 type Comparison struct {
 	Mode       string
 	BaseBranch string // ModeBase only
-	Commit     string // ModeCommit only: full SHA
+	Commit     string // ModeCommit and ModeSince only: full SHA
 	BaseRev    string // full SHA or emptyTreeSHA
 	TargetRev  string // full SHA, or "" for the working tree
 	Notice     string // explains a fallback to another mode
@@ -170,21 +171,37 @@ func resolveComparison(dir, mode, baseBranch, commit string) (Comparison, error)
 		return Comparison{Mode: ModeBase, BaseBranch: baseBranch, BaseRev: mergeBase}, nil
 
 	case ModeCommit:
-		if commit == "" || strings.HasPrefix(commit, "-") {
-			return Comparison{}, fmt.Errorf("%w: invalid commit %q", errInvalidComparison, commit)
-		}
-		sha, err := revParse(dir, commit)
+		sha, err := resolveCommit(dir, commit)
 		if err != nil {
-			return Comparison{}, fmt.Errorf("%w: unknown commit %q", errInvalidComparison, commit)
+			return Comparison{}, err
 		}
 		parent, err := revParse(dir, sha+"^")
 		if err != nil {
 			parent = emptyTreeSHA
 		}
 		return Comparison{Mode: ModeCommit, Commit: sha, BaseRev: parent, TargetRev: sha, ReadOnly: true}, nil
+
+	case ModeSince:
+		sha, err := resolveCommit(dir, commit)
+		if err != nil {
+			return Comparison{}, err
+		}
+		return Comparison{Mode: ModeSince, Commit: sha, BaseRev: sha}, nil
 	}
 
 	return Comparison{}, fmt.Errorf("%w: unknown mode %q", errInvalidComparison, mode)
+}
+
+// resolveCommit resolves the commit named in the compare page's query to a full SHA.
+func resolveCommit(dir, commit string) (string, error) {
+	if commit == "" || strings.HasPrefix(commit, "-") {
+		return "", fmt.Errorf("%w: invalid commit %q", errInvalidComparison, commit)
+	}
+	sha, err := revParse(dir, commit)
+	if err != nil {
+		return "", fmt.Errorf("%w: unknown commit %q", errInvalidComparison, commit)
+	}
+	return sha, nil
 }
 
 func uncommittedComparison(dir string) Comparison {

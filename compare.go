@@ -179,6 +179,12 @@ func handleCompare(w http.ResponseWriter, r *http.Request) {
 	data["DefaultBase"] = defaultBaseBranch(projectDir)
 	data["Branches"] = branches
 	data["Commits"] = commits
+	// Since commit starts from HEAD's parent, so the link shows the latest commit plus uncommitted work
+	if len(commits) > 1 {
+		data["SinceDefault"] = commits[1].SHA
+	} else if len(commits) == 1 {
+		data["SinceDefault"] = commits[0].SHA
+	}
 	// Show the diffs in the same order as the file tree
 	tree := buildFileTree(files)
 	data["Files"] = treeFiles(tree)
