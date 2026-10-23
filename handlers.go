@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -68,43 +69,56 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleProjectFiles(w http.ResponseWriter, r *http.Request) {
-	// Get everything after /projects/
-	fullPath := strings.TrimPrefix(r.URL.Path, "/projects/")
-
+// findProject maps a URL path below /projects or /compare to the registered project
+// it starts with and the path within that project ("" for the project root).
+func findProject(urlPath string) (string, string, error) {
 	// Ensure leading slash for absolute paths
-	if !strings.HasPrefix(fullPath, "/") {
-		fullPath = "/" + fullPath
+	if !strings.HasPrefix(urlPath, "/") {
+		urlPath = "/" + urlPath
 	}
 
 	// URL decode the full path (may already be decoded by Go's http server)
-	decodedPath, err := url.PathUnescape(fullPath)
+	decodedPath, err := url.PathUnescape(urlPath)
 	if err != nil {
-		http.Error(w, "Invalid path", http.StatusBadRequest)
-		return
+		return "", "", errInvalidPath
+	}
+
+	projects, err := getAllProjects()
+	if err != nil {
+		return "", "", err
 	}
 
 	// Find the first registered project that matches the beginning of the path
-	projects, err := getAllProjects()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	var project string
-	var childPath string
-
 	for _, p := range projects {
 		if decodedPath == p.Directory || strings.HasPrefix(decodedPath, p.Directory+"/") {
-			project = p.Directory
-			childPath = strings.TrimPrefix(decodedPath, p.Directory)
-			childPath = strings.TrimPrefix(childPath, "/")
-			break
+			childPath := strings.TrimPrefix(decodedPath, p.Directory)
+			return p.Directory, strings.TrimPrefix(childPath, "/"), nil
 		}
 	}
+	return "", "", errProjectNotFound
+}
 
-	if project == "" {
+var (
+	errInvalidPath     = errors.New("invalid path")
+	errProjectNotFound = errors.New("project not found")
+)
+
+// writeFindProjectError responds to a findProject failure.
+func writeFindProjectError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, errInvalidPath):
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+	case errors.Is(err, errProjectNotFound):
 		http.NotFound(w, r)
+	default:
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func handleProjectFiles(w http.ResponseWriter, r *http.Request) {
+	project, childPath, err := findProject(strings.TrimPrefix(r.URL.Path, "/projects/"))
+	if err != nil {
+		writeFindProjectError(w, r, err)
 		return
 	}
 
@@ -188,6 +202,7 @@ func renderViewer(w http.ResponseWriter, r *http.Request, projectDir, filePath s
 		"HTMLContent": template.HTML(html),
 		"Comments":    comments,
 		"Nonce":       nonce,
+		"IsGitRepo":   isGitRepo(projectDir),
 	}
 
 	if err := templates.ExecuteTemplate(w, "viewer.html", data); err != nil {
@@ -309,6 +324,7 @@ func renderDirectoryListing(w http.ResponseWriter, r *http.Request, projectDir, 
 		"ProjectDir": projectDir,
 		"ChildPath":  childPath,
 		"Entries":    filteredEntries,
+		"IsGitRepo":  isGitRepo(projectDir),
 	}
 
 	if err := templates.ExecuteTemplate(w, "directory.html", data); err != nil {

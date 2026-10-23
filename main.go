@@ -139,6 +139,7 @@ func runServer() {
 	// HTML Routes
 	r.Get("/", handleHome)
 	r.Get("/projects/*", handleProjectFiles)
+	r.Get("/compare/*", handleCompare)
 
 	// API Routes
 	r.Post("/api/comments", handleCreateComment)

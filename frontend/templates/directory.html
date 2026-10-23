@@ -15,6 +15,9 @@
             <span class="breadcrumb-separator">›</span>
             <span>{{.ChildPath}}</span>
             {{end}}
+            {{if .IsGitRepo}}
+            <a class="changes-link" href="/compare{{.ProjectDir | pathescape}}">Changes</a>
+            {{end}}
         </div>
 
         <h1>{{if .ChildPath}}{{.ChildPath}}{{else}}{{.ProjectDir | base}}{{end}}</h1>

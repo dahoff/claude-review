@@ -13,6 +13,9 @@
             <a href="/projects{{.ProjectDir | pathescape}}">{{.ProjectDir | base}}</a>
             <span class="breadcrumb-separator">›</span>
             <span>{{.FilePath}}</span>
+            {{if .IsGitRepo}}
+            <a class="changes-link" href="/compare{{.ProjectDir | pathescape}}">Changes</a>
+            {{end}}
         </div>
 
         <div id="markdown-content">{{.HTMLContent}}</div>
