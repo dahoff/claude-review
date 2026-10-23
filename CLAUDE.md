@@ -31,7 +31,7 @@ claude-review is a lightweight companion for working on planning documents with 
 - **watcher.go**: File system watcher using fsnotify for automatic reload on file changes
 - **notify.go**: HTTP client for notifying server about resolved comments
 - **version.go**: Version information
-- **install.go**: Slash command installation and uninstallation logic
+- **install.go**: Slash command installation and full uninstallation (server, slash commands, binary, optionally data)
 - **embed.go**: Embedded frontend assets
 
 ### Frontend
@@ -111,7 +111,7 @@ The server uses multiple mechanisms for real-time updates:
 - `claude-review resolve --file <path>`: Mark all comments as resolved for file (relative or absolute path)
 - `claude-review resolve --comment-id <id>`: Mark a specific comment thread as resolved
 - `claude-review install`: Install slash commands to ~/.claude/commands/
-- `claude-review uninstall`: Uninstall slash commands from ~/.claude/commands/
+- `claude-review uninstall [--purge]`: Stop the server, remove slash commands from ~/.claude/commands/ and the binary from ~/.local/bin/; `--purge` also deletes the data directory
 - `claude-review version`: Show version information
 
 ### Daemon Management

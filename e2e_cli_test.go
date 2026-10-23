@@ -668,6 +668,71 @@ func TestE2E_CLI_Uninstall(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, string(content), "claude-review")
 	})
+
+	// Helper to lay out a home directory the way install.sh leaves it
+	setupInstalledHome := func(t *testing.T, name string) (home, binPath, dataDir string) {
+		home = filepath.Join(tempDir, name)
+		binPath = filepath.Join(home, ".local", "bin", "claude-review")
+		dataDir = filepath.Join(home, ".local", "share", "claude-review")
+		require.NoError(t, os.MkdirAll(filepath.Dir(binPath), 0755))
+		require.NoError(t, os.MkdirAll(dataDir, 0755))
+		require.NoError(t, os.WriteFile(binPath, []byte("binary"), 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(dataDir, "comments.db"), []byte("db"), 0644))
+
+		cmd := exec.Command(binaryPath, "install")
+		cmd.Env = append(os.Environ(), "HOME="+home, "GOCOVERDIR=tmp/coverage")
+		output, err := cmd.CombinedOutput()
+		require.NoError(t, err, "Install failed: %s", string(output))
+		return home, binPath, dataDir
+	}
+
+	t.Run("uninstall removes the binary and keeps the data directory", func(t *testing.T) {
+		home, binPath, dataDir := setupInstalledHome(t, "home-binary")
+
+		cmd := exec.Command(binaryPath, "uninstall")
+		cmd.Env = append(os.Environ(), "HOME="+home, "GOCOVERDIR=tmp/coverage")
+		output, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(output))
+
+		assert.Contains(t, string(output), "Removed binary "+binPath)
+		assert.Contains(t, string(output), "Kept data directory "+dataDir)
+		assert.Contains(t, string(output), "--purge")
+
+		_, err = os.Stat(binPath)
+		assert.True(t, os.IsNotExist(err), "Binary should be removed")
+		_, err = os.Stat(filepath.Join(dataDir, "comments.db"))
+		assert.NoError(t, err, "Comments database should be kept")
+	})
+
+	t.Run("uninstall --purge removes the data directory", func(t *testing.T) {
+		home, binPath, dataDir := setupInstalledHome(t, "home-purge")
+
+		cmd := exec.Command(binaryPath, "uninstall", "--purge")
+		cmd.Env = append(os.Environ(), "HOME="+home, "GOCOVERDIR=tmp/coverage")
+		output, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(output))
+
+		assert.Contains(t, string(output), "Removed data directory "+dataDir)
+
+		_, err = os.Stat(binPath)
+		assert.True(t, os.IsNotExist(err), "Binary should be removed")
+		_, err = os.Stat(dataDir)
+		assert.True(t, os.IsNotExist(err), "Data directory should be removed")
+	})
+
+	t.Run("uninstall does not create the data directory", func(t *testing.T) {
+		freshHome := filepath.Join(tempDir, "home-no-data")
+		require.NoError(t, os.MkdirAll(freshHome, 0755))
+
+		cmd := exec.Command(binaryPath, "uninstall")
+		cmd.Env = append(os.Environ(), "HOME="+freshHome, "GOCOVERDIR=tmp/coverage")
+		output, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(output))
+
+		assert.NotContains(t, string(output), "data directory")
+		_, err = os.Stat(filepath.Join(freshHome, ".local", "share", "claude-review"))
+		assert.True(t, os.IsNotExist(err), "Data directory should not be created")
+	})
 }
 
 // TestE2E_CLI_Address_Project tests addressing comments across all files of a project

@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -361,4 +362,50 @@ func TestE2E_Daemon_ProcessIsolation(t *testing.T) {
 	// Cleanup
 	_, _ = env.runCLI(t, "server", "--stop")
 	_ = waitForPIDFileRemoved(env.PIDFile(), 2*time.Second)
+}
+
+func TestE2E_Daemon_UninstallStopsServer(t *testing.T) {
+	env := setupE2E(t)
+
+	// Kill the foreground server started by setupE2E
+	if env.ServerCmd.Process != nil {
+		_ = env.ServerCmd.Process.Kill()
+		_ = env.ServerCmd.Wait()
+		_ = waitForProcessStop(env.ServerCmd.Process, 2*time.Second)
+	}
+
+	t.Cleanup(func() {
+		_, _ = env.runCLI(t, "server", "--stop")
+		_ = waitForPIDFileRemoved(env.PIDFile(), 2*time.Second)
+	})
+
+	_, err := env.runCLI(t, "server", "--daemon")
+	require.NoError(t, err)
+	require.NoError(t, waitForServer(env.BaseURL, 10*time.Second))
+
+	pidData, err := os.ReadFile(env.PIDFile())
+	require.NoError(t, err)
+	pid, err := strconv.Atoi(strings.TrimSpace(string(pidData)))
+	require.NoError(t, err)
+	process, err := os.FindProcess(pid)
+	require.NoError(t, err)
+
+	// Use an isolated HOME so the real installation is never touched
+	home := filepath.Join(env.TempDir, "home")
+	require.NoError(t, os.MkdirAll(home, 0755))
+	cmd := exec.Command(env.BinaryPath, "uninstall")
+	cmd.Env = append(os.Environ(),
+		"HOME="+home,
+		"CR_DATA_DIR="+env.DataDir,
+		"CR_LISTEN_PORT="+env.Port,
+		"GOCOVERDIR=tmp/coverage",
+	)
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(output))
+	assert.Contains(t, string(output), "Sent SIGTERM to server")
+
+	// uninstall waits for the server to exit before returning
+	assert.Error(t, process.Signal(syscall.Signal(0)), "Server should not be running after uninstall")
+	_, err = os.Stat(filepath.Join(env.DataDir, "comments.db"))
+	assert.NoError(t, err, "Data directory should be kept without --purge")
 }

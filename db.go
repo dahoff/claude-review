@@ -86,19 +86,25 @@ func queryComments(query string, args ...interface{}) ([]Comment, error) {
 
 var db *sql.DB
 
-// getDataDir returns the data directory for claude-review and ensures it exists
-func getDataDir() (string, error) {
-	var dataDir string
-
+// dataDirPath returns the data directory for claude-review without creating it
+func dataDirPath() (string, error) {
 	// Check for CR_DATA_DIR environment variable first
 	if envDataDir := os.Getenv("CR_DATA_DIR"); envDataDir != "" {
-		dataDir = envDataDir
-	} else {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("failed to get user home directory: %w", err)
-		}
-		dataDir = filepath.Join(homeDir, ".local", "share", "claude-review")
+		return envDataDir, nil
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get user home directory: %w", err)
+	}
+	return filepath.Join(homeDir, ".local", "share", "claude-review"), nil
+}
+
+// getDataDir returns the data directory for claude-review and ensures it exists
+func getDataDir() (string, error) {
+	dataDir, err := dataDirPath()
+	if err != nil {
+		return "", err
 	}
 
 	// Ensure the directory exists

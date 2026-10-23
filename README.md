@@ -89,27 +89,18 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ## Uninstallation
 
-To completely remove claude-review from your system:
+```bash
+claude-review uninstall
+```
 
-1. Stop the daemon if it's running:
-   ```bash
-   claude-review server --stop
-   ```
+This stops the server if it's running, removes the `/cr-review` and `/cr-address` slash commands
+from `~/.claude/commands/`, and removes the binary from `~/.local/bin/`.
 
-2. Uninstall the slash commands:
-   ```bash
-   claude-review uninstall
-   ```
+Your comments database and logs in `~/.local/share/claude-review` are kept. To delete them too:
 
-3. Remove the binary:
-   ```bash
-   rm ~/.local/bin/claude-review
-   ```
-
-4. (Optional) Remove the data directory (contains comments database, PID file, and logs):
-   ```bash
-   rm -rf ~/.local/share/claude-review
-   ```
+```bash
+claude-review uninstall --purge
+```
 
 ## Architecture
 

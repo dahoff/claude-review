@@ -28,7 +28,7 @@ func main() {
 		fmt.Println("  reply                    Reply to a comment thread")
 		fmt.Println("  resolve                  Mark comments as resolved")
 		fmt.Println("  install                  Install slash commands")
-		fmt.Println("  uninstall                Uninstall slash commands")
+		fmt.Println("  uninstall [--purge]      Stop the server, remove slash commands and binary (--purge: also data)")
 		fmt.Println("  version                  Show version information")
 		os.Exit(1)
 	}
@@ -586,8 +586,15 @@ func runInstall() {
 }
 
 func runUninstall() {
-	if err := uninstallSlashCommands(); err != nil {
-		log.Fatalf("Failed to uninstall slash commands: %v", err)
+	uninstallCmd := flag.NewFlagSet("uninstall", flag.ExitOnError)
+	purge := uninstallCmd.Bool("purge", false, "Also delete the data directory (comments database, PID file and logs)")
+
+	if err := uninstallCmd.Parse(os.Args[2:]); err != nil {
+		log.Fatalf("Failed to parse flags: %v", err)
+	}
+
+	if err := uninstall(*purge); err != nil {
+		log.Fatalf("Failed to uninstall: %v", err)
 	}
 }
 
