@@ -414,3 +414,83 @@ func TestE2E_Broadcast_API(t *testing.T) {
 
 	assert.Equal(t, "broadcast", result["status"])
 }
+
+// openSSE connects to the events endpoint with the given query and waits for the connection.
+func openSSE(t *testing.T, env *TestEnv, query string) *http.Response {
+	t.Helper()
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(env.BaseURL + "/api/events?" + query)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NoError(t, waitForSSEConnected(resp, 3*time.Second))
+	return resp
+}
+
+// waitForSSEEvent reports whether the named event arrives on the stream before the timeout.
+func waitForSSEEvent(resp *http.Response, event string, timeout time.Duration) bool {
+	found := make(chan bool, 1)
+	go func() {
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			if strings.Contains(scanner.Text(), "event: "+event) {
+				found <- true
+				return
+			}
+		}
+		found <- false
+	}()
+	select {
+	case ok := <-found:
+		return ok
+	case <-time.After(timeout):
+		return false
+	}
+}
+
+func TestE2E_SSE_ProjectScopeReceivesAllFiles(t *testing.T) {
+	env := setupE2E(t)
+	_, err := env.runCLI(t, "register", "--project", env.ProjectDir)
+	require.NoError(t, err)
+
+	resp := openSSE(t, env, "project_directory="+url.QueryEscape(env.ProjectDir)+"&scope=project")
+
+	created := env.postJSON(t, "/api/comments", map[string]interface{}{
+		"project_directory": env.ProjectDir,
+		"file_path":         "test.md",
+		"line_start":        1,
+		"line_end":          1,
+		"selected_text":     "Test Document",
+		"comment_text":      "To be resolved",
+	})
+	_ = created.Body.Close()
+
+	_, err = env.runCLI(t, "resolve", "--project", env.ProjectDir, "--file", "test.md")
+	require.NoError(t, err)
+
+	assert.True(t, waitForSSEEvent(resp, "comments_resolved", 5*time.Second))
+}
+
+func TestE2E_SSE_ProjectScopeWatches(t *testing.T) {
+	env := setupE2E(t)
+	_, err := env.runCLI(t, "register", "--project", env.ProjectDir)
+	require.NoError(t, err)
+
+	resp := openSSE(t, env, "project_directory="+url.QueryEscape(env.ProjectDir)+"&scope=project&watch=test.md")
+
+	mdPath := filepath.Join(env.ProjectDir, "test.md")
+	content, err := os.ReadFile(mdPath)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(mdPath, append(content, []byte("\nmore\n")...), 0644))
+
+	assert.True(t, waitForSSEEvent(resp, "file_updated", 5*time.Second))
+}
+
+func TestE2E_SSE_MissingTarget(t *testing.T) {
+	env := setupE2E(t)
+
+	resp, err := http.Get(env.BaseURL + "/api/events?project_directory=" + url.QueryEscape(env.ProjectDir))
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+}

@@ -400,3 +400,24 @@ func TestE2E_FileWatcher_DirectoryDeletion(t *testing.T) {
 	_ = healthResp.Body.Close()
 	assert.Equal(t, http.StatusOK, healthResp.StatusCode)
 }
+
+func TestE2E_FileWatcher_RefCountedWatch(t *testing.T) {
+	env := setupE2E(t)
+	_, err := env.runCLI(t, "register", "--project", env.ProjectDir)
+	require.NoError(t, err)
+
+	query := "project_directory=" + url.QueryEscape(env.ProjectDir) + "&file_path=test.md"
+	first := openSSE(t, env, query)
+	second := openSSE(t, env, query)
+
+	// Closing one viewer must not stop the other from receiving updates
+	_ = first.Body.Close()
+	time.Sleep(300 * time.Millisecond)
+
+	testFile := filepath.Join(env.ProjectDir, "test.md")
+	content, err := os.ReadFile(testFile)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(testFile, append(content, []byte("\nmore\n")...), 0644))
+
+	assert.True(t, waitForSSEEvent(second, "file_updated", 5*time.Second))
+}

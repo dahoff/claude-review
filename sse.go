@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 	"sync"
 )
 
 type SSEClient struct {
 	ProjectDir string
 	FilePath   string
+	AllFiles   bool // Receives events for every file of the project
 	Channel    chan []byte
 }
 
@@ -44,7 +46,7 @@ func (h *SSEHub) broadcast(projectDir, filePath, event string, data interface{})
 	message := []byte(fmt.Sprintf("event: %s\ndata: %s\n\n", event, jsonData))
 
 	for client := range h.clients {
-		if client.ProjectDir == projectDir && client.FilePath == filePath {
+		if client.ProjectDir == projectDir && (client.AllFiles || client.FilePath == filePath) {
 			select {
 			case client.Channel <- message:
 			default:
@@ -54,13 +56,22 @@ func (h *SSEHub) broadcast(projectDir, filePath, event string, data interface{})
 	}
 }
 
+// handleSSE streams events for one file (file_path), or for a whole project
+// (scope=project) while watching each file named by a watch parameter.
 func handleSSE(w http.ResponseWriter, r *http.Request) {
-	projectDir := r.URL.Query().Get("project_directory")
-	filePath := r.URL.Query().Get("file_path")
+	query := r.URL.Query()
+	projectDir := query.Get("project_directory")
+	filePath := query.Get("file_path")
+	allFiles := query.Get("scope") == "project"
 
-	if projectDir == "" || filePath == "" {
+	if projectDir == "" || (filePath == "" && !allFiles) {
 		http.Error(w, "Missing project_directory or file_path", http.StatusBadRequest)
 		return
+	}
+
+	watchPaths := query["watch"]
+	if !allFiles {
+		watchPaths = []string{filePath}
 	}
 
 	// Set SSE headers
@@ -72,24 +83,32 @@ func handleSSE(w http.ResponseWriter, r *http.Request) {
 	client := &SSEClient{
 		ProjectDir: projectDir,
 		FilePath:   filePath,
+		AllFiles:   allFiles,
 		Channel:    make(chan []byte, 10),
 	}
 
 	sseHub.addClient(client)
 	defer sseHub.removeClient(client)
 
-	// Setup file watcher for this file
+	// Setup file watchers
 	if fileWatcher != nil {
-		if err := fileWatcher.watchFile(projectDir, filePath, func() {
-			sseHub.broadcast(projectDir, filePath, "file_updated", map[string]string{
-				"file_path": filePath,
-			})
-		}); err != nil {
-			log.Printf("Failed to watch file: %v", err)
+		for _, path := range watchPaths {
+			if !isWithinDir(projectDir, filepath.Join(projectDir, path)) {
+				log.Printf("Refusing to watch file outside project: %s", path)
+				continue
+			}
+			if err := fileWatcher.watchFile(projectDir, path, func() {
+				sseHub.broadcast(projectDir, path, "file_updated", map[string]string{
+					"file_path": path,
+				})
+			}); err != nil {
+				log.Printf("Failed to watch file: %v", err)
+				continue
+			}
+			defer func() {
+				_ = fileWatcher.unwatchFile(projectDir, path)
+			}()
 		}
-		defer func() {
-			_ = fileWatcher.unwatchFile(projectDir, filePath)
-		}()
 	}
 
 	// Send initial connection message

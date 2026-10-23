@@ -10,7 +10,7 @@ import (
 
 type FileWatcher struct {
 	watcher   *fsnotify.Watcher
-	watches   map[string]bool // Track watched files
+	watches   map[string]int // Number of subscribers per watched file
 	mu        sync.RWMutex
 	callbacks map[string]func() // Callbacks per file path
 }
@@ -25,7 +25,7 @@ func initFileWatcher() error {
 
 	fileWatcher = &FileWatcher{
 		watcher:   watcher,
-		watches:   make(map[string]bool),
+		watches:   make(map[string]int),
 		callbacks: make(map[string]func()),
 	}
 
@@ -70,8 +70,8 @@ func (fw *FileWatcher) watchFile(projectDir, filePath string, callback func()) e
 	defer fw.mu.Unlock()
 
 	// Check if already watching
-	if fw.watches[absPath] {
-		// Update callback
+	if fw.watches[absPath] > 0 {
+		fw.watches[absPath]++
 		fw.callbacks[absPath] = callback
 		return nil
 	}
@@ -81,7 +81,7 @@ func (fw *FileWatcher) watchFile(projectDir, filePath string, callback func()) e
 		return err
 	}
 
-	fw.watches[absPath] = true
+	fw.watches[absPath] = 1
 	fw.callbacks[absPath] = callback
 
 	log.Printf("Started watching file: %s", absPath)
@@ -94,7 +94,13 @@ func (fw *FileWatcher) unwatchFile(projectDir, filePath string) error {
 	fw.mu.Lock()
 	defer fw.mu.Unlock()
 
-	if !fw.watches[absPath] {
+	if fw.watches[absPath] == 0 {
+		return nil
+	}
+
+	// Keep the watch while other subscribers remain
+	fw.watches[absPath]--
+	if fw.watches[absPath] > 0 {
 		return nil
 	}
 
