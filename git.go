@@ -40,9 +40,10 @@ type CommitInfo struct {
 	Subject  string
 }
 
-// gitOutput runs git in dir and returns its stdout. Paths in the output are not quoted.
+// gitOutput runs git in dir and returns its stdout. Paths in the output are not quoted,
+// and pathspecs are taken literally.
 func gitOutput(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", dir, "-c", "core.quotePath=false"}, args...)...)
+	cmd := exec.Command("git", append([]string{"-C", dir, "-c", "core.quotePath=false", "--literal-pathspecs"}, args...)...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
