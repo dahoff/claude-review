@@ -290,3 +290,30 @@ func TestE2E_Compare_LargeFileWithCommentStaysExpanded(t *testing.T) {
 	assert.Contains(t, body, `<section class="diff-file collapsed" id="file-1" data-path="big2.txt">`)
 	assert.Contains(t, body, `class="diff-comment-count" title="Unresolved comment threads">1</span>`)
 }
+
+func TestE2E_Compare_FileTree(t *testing.T) {
+	env := setupE2E(t)
+	setupGitProject(t, env)
+	writeProjectFile(t, env, "src/app/main.go", "package main\n")
+	writeProjectFile(t, env, "test.md", "# Changed\n")
+
+	status, body := getCompare(t, env, "mode=uncommitted")
+	require.Equal(t, http.StatusOK, status)
+	assert.Contains(t, body, `<nav class="file-tree"`)
+	assert.Contains(t, body, `<summary class="tree-dir">src/app</summary>`)
+	assert.Regexp(t, `<a class="tree-file" href="#file-0"[^>]*>\s*<span class="tree-file-name">main.go</span>`, body)
+	assert.Regexp(t, `<a class="tree-file" href="#file-1"[^>]*>\s*<span class="tree-file-name">test.md</span>`, body)
+}
+
+func TestE2E_Compare_DiffsFollowTreeOrder(t *testing.T) {
+	env := setupE2E(t)
+	setupGitProject(t, env)
+	writeProjectFile(t, env, "Z.md", "z\n")
+	writeProjectFile(t, env, "src/a.go", "package a\n")
+
+	_, body := getCompare(t, env, "mode=uncommitted")
+	// Folders come first in the tree, so the src/ file's diff comes first too
+	assert.Less(t,
+		strings.Index(body, `<section class="diff-file" id="file-1" data-path="src/a.go">`),
+		strings.Index(body, `<section class="diff-file" id="file-0" data-path="Z.md">`))
+}

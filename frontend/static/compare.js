@@ -19,6 +19,7 @@
         }
         document.body.classList.add('js');
         initControls();
+        initFileTree();
         if (!readOnly) {
             initSelection();
         }
@@ -45,6 +46,69 @@
                 button.closest('.diff-file').classList.toggle('collapsed');
             });
         });
+    }
+
+    // File tree
+
+    function initFileTree() {
+        const tree = document.querySelector('.file-tree');
+        if (!tree) return;
+        const links = [...tree.querySelectorAll('.tree-file')];
+
+        // A clicked file stays highlighted until the user scrolls, since files near the end of
+        // the page can't scroll to the top. Jumping to a collapsed file opens it.
+        let pinned = null;
+        links.forEach((link) => {
+            link.addEventListener('click', () => {
+                const section = document.getElementById(link.getAttribute('href').slice(1));
+                if (section) section.classList.remove('collapsed');
+                pinned = link;
+                links.forEach((l) => l.classList.toggle('active', l === link));
+            });
+        });
+        ['wheel', 'keydown', 'touchmove', 'mousedown'].forEach((event) => {
+            window.addEventListener(event, (e) => {
+                if (!e.target.closest || !e.target.closest('.file-tree')) pinned = null;
+            });
+        });
+
+        const filter = tree.querySelector('.file-tree-filter');
+        filter.hidden = false;
+        filter.addEventListener('input', () => {
+            const query = filter.value.trim().toLowerCase();
+            links.forEach((link) => {
+                link.parentElement.classList.toggle('filtered-out', !link.dataset.path.toLowerCase().includes(query));
+            });
+            // Hide folders left without any matching file, deepest first
+            [...tree.querySelectorAll('details')].reverse().forEach((folder) => {
+                const visible = [...folder.querySelectorAll(':scope > ul > li')].some(
+                    (li) => !li.classList.contains('filtered-out'),
+                );
+                folder.parentElement.classList.toggle('filtered-out', !visible);
+            });
+        });
+
+        // Highlight the file being read: the last one whose header has scrolled past the top
+        const sections = [...document.querySelectorAll('.diff-file')];
+        let scheduled = false;
+        const highlight = () => {
+            scheduled = false;
+            if (pinned) return;
+            let current = sections[0];
+            for (const section of sections) {
+                if (section.getBoundingClientRect().top <= 80) current = section;
+            }
+            links.forEach((link) =>
+                link.classList.toggle('active', current && link.getAttribute('href') === `#${current.id}`),
+            );
+        };
+        window.addEventListener('scroll', () => {
+            if (!scheduled) {
+                scheduled = true;
+                requestAnimationFrame(highlight);
+            }
+        });
+        highlight();
     }
 
     // Selection

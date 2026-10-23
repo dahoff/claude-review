@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,4 +41,39 @@ func TestPlaceComments(t *testing.T) {
 		2: {File: "a.go", Where: "file"},
 		3: {File: "z.go", Where: "other"},
 	}, placeComments(files, rows, comments, true))
+}
+
+// treeShape renders a file tree as indented lines, folders ending in "/".
+func treeShape(nodes []fileTreeNode, indent string) string {
+	var out string
+	for _, n := range nodes {
+		if n.Dir {
+			out += indent + n.Name + "/\n" + treeShape(n.Children, indent+"  ")
+		} else {
+			out += indent + n.Name + " -> " + n.File.ID + "\n"
+		}
+	}
+	return out
+}
+
+func TestBuildFileTree(t *testing.T) {
+	var files []compareFile
+	for i, path := range []string{
+		"README.md", "docs/guide/intro.md", "nested/", "src/app/main.go", "src/app/util.go", "src/lib/x.go", "a.go",
+	} {
+		files = append(files, compareFile{ChangedFile: ChangedFile{Path: path}, ID: fmt.Sprintf("file-%d", i)})
+	}
+
+	assert.Equal(t, `docs/guide/
+  intro.md -> file-1
+src/
+  app/
+    main.go -> file-3
+    util.go -> file-4
+  lib/
+    x.go -> file-5
+README.md -> file-0
+a.go -> file-6
+nested/ -> file-2
+`, treeShape(buildFileTree(files), ""))
 }

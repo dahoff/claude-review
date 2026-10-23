@@ -36,13 +36,15 @@ claude-review is a lightweight companion for working on planning documents with 
 - **git.go**: Git helpers (branches, commits, default base) and `resolveComparison`, which turns the compare page's
   mode/base/commit query into revisions
 - **diff.go**: Changed-file listing, unified-diff parsing into split rows, and folding of unchanged context
-- **compare.go**: `/compare/<project>` handler; places comment threads on diff lines, under a file, or in "other files"
+- **compare.go**: `/compare/<project>` handler; places comment threads on diff lines, under a file, or in "other files"; builds the
+  GitHub-style file tree (folders first, single-child folders merged) that also orders the diff sections
 
 ### Frontend
 - **frontend/templates/**: Go HTML templates (viewer.html, directory.html, index.html, compare.html)
 - **frontend/static/**: CSS and JavaScript for the web UI
 - **viewer.js**: Handles text selection, comment creation/editing, SSE connection for live updates
-- **compare.js**: Compare page: right-side selection to comment, inline threads, gap expansion, live reload
+- **compare.js**: Compare page: changed-file tree (filter, jump, active highlight), right-side selection to comment,
+  inline threads, gap expansion, live reload
 
 ### Database Schema
 SQLite database stored at `~/.local/share/claude-review/comments.db`:

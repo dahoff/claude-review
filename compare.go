@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 )
 
@@ -178,7 +179,10 @@ func handleCompare(w http.ResponseWriter, r *http.Request) {
 	data["DefaultBase"] = defaultBaseBranch(projectDir)
 	data["Branches"] = branches
 	data["Commits"] = commits
-	data["Files"] = files
+	// Show the diffs in the same order as the file tree
+	tree := buildFileTree(files)
+	data["Files"] = treeFiles(tree)
+	data["FileTree"] = tree
 	data["Additions"] = additions
 	data["Deletions"] = deletions
 	data["Comments"] = comments
@@ -194,4 +198,75 @@ func renderCompare(w http.ResponseWriter, data map[string]interface{}) {
 	if err := templates.ExecuteTemplate(w, "compare.html", data); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+// fileTreeNode is a folder or file in the compare page's file tree.
+type fileTreeNode struct {
+	Name     string
+	Dir      bool
+	File     *compareFile // files only
+	Children []fileTreeNode
+}
+
+// buildFileTree arranges files into folders, folders before files, merging folders
+// that only hold one folder ("src/app") the way GitHub's PR file tree does.
+func buildFileTree(files []compareFile) []fileTreeNode {
+	root := &fileTreeNode{Dir: true}
+	for i := range files {
+		// An untracked nested repository is listed as "dir/"; keep it as one entry
+		parts := strings.Split(strings.TrimSuffix(files[i].Path, "/"), "/")
+		if strings.HasSuffix(files[i].Path, "/") {
+			parts[len(parts)-1] += "/"
+		}
+
+		node := root
+		for _, dir := range parts[:len(parts)-1] {
+			node = childDir(node, dir)
+		}
+		node.Children = append(node.Children, fileTreeNode{Name: parts[len(parts)-1], File: &files[i]})
+	}
+	return compactTree(root.Children)
+}
+
+func childDir(node *fileTreeNode, name string) *fileTreeNode {
+	for i := range node.Children {
+		if node.Children[i].Dir && node.Children[i].Name == name {
+			return &node.Children[i]
+		}
+	}
+	node.Children = append(node.Children, fileTreeNode{Name: name, Dir: true})
+	return &node.Children[len(node.Children)-1]
+}
+
+func compactTree(nodes []fileTreeNode) []fileTreeNode {
+	for i := range nodes {
+		if !nodes[i].Dir {
+			continue
+		}
+		for len(nodes[i].Children) == 1 && nodes[i].Children[0].Dir {
+			nodes[i].Name += "/" + nodes[i].Children[0].Name
+			nodes[i].Children = nodes[i].Children[0].Children
+		}
+		nodes[i].Children = compactTree(nodes[i].Children)
+	}
+	sort.SliceStable(nodes, func(a, b int) bool {
+		if nodes[a].Dir != nodes[b].Dir {
+			return nodes[a].Dir
+		}
+		return nodes[a].Name < nodes[b].Name
+	})
+	return nodes
+}
+
+// treeFiles lists the files of a tree in display order.
+func treeFiles(nodes []fileTreeNode) []compareFile {
+	var files []compareFile
+	for _, n := range nodes {
+		if n.Dir {
+			files = append(files, treeFiles(n.Children)...)
+		} else {
+			files = append(files, *n.File)
+		}
+	}
+	return files
 }

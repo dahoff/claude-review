@@ -78,66 +78,77 @@
 
         {{with $c.Notice}}
         <p class="compare-notice">{{.}}</p>
-        {{end}} {{if .Files}}
-        <p class="compare-summary">
-            {{len .Files}} file{{if ne (len .Files) 1}}s{{end}} changed,
-            <span class="diff-additions">+{{.Additions}}</span>
-            <span class="diff-deletions">−{{.Deletions}}</span>
-        </p>
-
-        {{range .Files}}
-        <section class="diff-file{{if .Collapsed}} collapsed{{end}}" id="{{.ID}}" data-path="{{.Path}}">
-            <div class="diff-file-header">
-                <button type="button" class="diff-file-toggle" title="Collapse or expand this file">▾</button>
-                <span class="diff-file-path">{{if .OldPath}}{{.OldPath}} → {{end}}{{.Path}}</span>
-                <span class="diff-status diff-status-{{.Status}}">{{.Status}}</span>
-                {{if .Comments}}
-                <span class="diff-comment-count" title="Unresolved comment threads">{{.Comments}}</span>
-                {{end}} {{if not .Binary}}
-                <span class="diff-additions">+{{.Additions}}</span>
-                <span class="diff-deletions">−{{.Deletions}}</span>
-                {{end}}
-            </div>
-            <div class="diff-file-comments"></div>
-            {{if .Skipped}}
-            <p class="diff-binary">Contents not shown: {{.Skipped}}</p>
-            {{else if .Binary}}
-            <p class="diff-binary">Binary file changed</p>
-            {{else if not .Segments}}
-            <p class="diff-binary">Empty file</p>
-            {{else}}
-            <table class="diff-table">
-                <colgroup>
-                    <col class="diff-num-col" />
-                    <col />
-                    <col class="diff-num-col" />
-                    <col />
-                </colgroup>
-                {{range .Segments}} {{if .Hidden}}
-                <tbody class="diff-gap-toggle">
-                    <tr>
-                        <td colspan="4"><button type="button">Expand {{len .Rows}} lines</button></td>
-                    </tr>
-                </tbody>
-                <tbody class="diff-gap" hidden>
-                    {{template "diff-rows" .Rows}}
-                </tbody>
-                {{else}}
-                <tbody>
-                    {{template "diff-rows" .Rows}}
-                </tbody>
-                {{end}} {{end}}
-            </table>
-            {{end}}
-        </section>
-        {{end}} {{else}}
-        <p class="no-content">No changes.</p>
         {{end}}
+        <div class="compare-layout{{if .Files}} has-tree{{end}}">
+            {{if .Files}}
+            <nav class="file-tree" aria-label="Changed files">
+                <input type="search" class="file-tree-filter" placeholder="Filter changed files" hidden />
+                {{template "file-tree" .FileTree}}
+            </nav>
+            {{end}}
+            <div class="compare-files">
+                {{if .Files}}
+                <p class="compare-summary">
+                    {{len .Files}} file{{if ne (len .Files) 1}}s{{end}} changed,
+                    <span class="diff-additions">+{{.Additions}}</span>
+                    <span class="diff-deletions">−{{.Deletions}}</span>
+                </p>
 
-        <section id="other-comments" hidden>
-            <h2>Other files with open comments</h2>
-            <div class="other-comments-list"></div>
-        </section>
+                {{range .Files}}
+                <section class="diff-file{{if .Collapsed}} collapsed{{end}}" id="{{.ID}}" data-path="{{.Path}}">
+                    <div class="diff-file-header">
+                        <button type="button" class="diff-file-toggle" title="Collapse or expand this file">▾</button>
+                        <span class="diff-file-path">{{if .OldPath}}{{.OldPath}} → {{end}}{{.Path}}</span>
+                        <span class="diff-status diff-status-{{.Status}}">{{.Status}}</span>
+                        {{if .Comments}}
+                        <span class="diff-comment-count" title="Unresolved comment threads">{{.Comments}}</span>
+                        {{end}} {{if not .Binary}}
+                        <span class="diff-additions">+{{.Additions}}</span>
+                        <span class="diff-deletions">−{{.Deletions}}</span>
+                        {{end}}
+                    </div>
+                    <div class="diff-file-comments"></div>
+                    {{if .Skipped}}
+                    <p class="diff-binary">Contents not shown: {{.Skipped}}</p>
+                    {{else if .Binary}}
+                    <p class="diff-binary">Binary file changed</p>
+                    {{else if not .Segments}}
+                    <p class="diff-binary">Empty file</p>
+                    {{else}}
+                    <table class="diff-table">
+                        <colgroup>
+                            <col class="diff-num-col" />
+                            <col />
+                            <col class="diff-num-col" />
+                            <col />
+                        </colgroup>
+                        {{range .Segments}} {{if .Hidden}}
+                        <tbody class="diff-gap-toggle">
+                            <tr>
+                                <td colspan="4"><button type="button">Expand {{len .Rows}} lines</button></td>
+                            </tr>
+                        </tbody>
+                        <tbody class="diff-gap" hidden>
+                            {{template "diff-rows" .Rows}}
+                        </tbody>
+                        {{else}}
+                        <tbody>
+                            {{template "diff-rows" .Rows}}
+                        </tbody>
+                        {{end}} {{end}}
+                    </table>
+                    {{end}}
+                </section>
+                {{end}} {{else}}
+                <p class="no-content">No changes.</p>
+                {{end}}
+
+                <section id="other-comments" hidden>
+                    <h2>Other files with open comments</h2>
+                    <div class="other-comments-list"></div>
+                </section>
+            </div>
+        </div>
 
         <script nonce="{{.Nonce}}">
             // Template variables from Go backend
@@ -161,4 +172,23 @@
     <td class="diff-num-new">{{if .NewLine}}{{.NewLine}}{{end}}</td>
     <td class="diff-new{{if not .NewLine}} diff-empty{{end}}">{{.NewText}}</td>
 </tr>
-{{end}} {{end}}
+{{end}} {{end}} {{define "file-tree"}}
+<ul>
+    {{range .}}
+    <li>
+        {{if .Dir}}
+        <details open>
+            <summary class="tree-dir">{{.Name}}</summary>
+            {{template "file-tree" .Children}}
+        </details>
+        {{else}} {{$name := .Name}} {{with .File}}
+        <a class="tree-file" href="#{{.ID}}" data-path="{{.Path}}" title="{{.Path}} ({{.Status}})">
+            <span class="tree-file-name">{{$name}}</span>
+            {{if .Comments}}<span class="diff-comment-count">{{.Comments}}</span>{{end}}
+            <span class="tree-status tree-status-{{.Status}}"></span>
+        </a>
+        {{end}} {{end}}
+    </li>
+    {{end}}
+</ul>
+{{end}}
