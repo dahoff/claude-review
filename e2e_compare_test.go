@@ -264,3 +264,29 @@ func TestE2E_Compare_ScriptServed(t *testing.T) {
 	assert.Contains(t, body, `src="/static/compare.js"`)
 	assert.Regexp(t, `<script nonce="[0-9a-f]{32}">`, body)
 }
+
+func TestE2E_Compare_NestedRepoAndSymlinks(t *testing.T) {
+	env := setupE2E(t)
+	setupGitProject(t, env)
+	nested := filepath.Join(env.ProjectDir, "nested")
+	runGit(t, env.ProjectDir, "init", "-q", nested)
+	require.NoError(t, os.Symlink("/nonexistent", filepath.Join(env.ProjectDir, "dangling")))
+
+	status, body := getCompare(t, env, "mode=uncommitted")
+	require.Equal(t, http.StatusOK, status)
+	assert.Contains(t, body, `data-path="dangling"`)
+}
+
+func TestE2E_Compare_LargeFileWithCommentStaysExpanded(t *testing.T) {
+	env := setupE2E(t)
+	setupGitProject(t, env)
+	writeProjectFile(t, env, "big.txt", strings.Repeat("line\n", 1200))
+	writeProjectFile(t, env, "big2.txt", strings.Repeat("line\n", 1200))
+	createComment(t, env, "big.txt", 5)
+
+	status, body := getCompare(t, env, "mode=uncommitted")
+	require.Equal(t, http.StatusOK, status)
+	assert.Contains(t, body, `<section class="diff-file" id="file-0" data-path="big.txt">`)
+	assert.Contains(t, body, `<section class="diff-file collapsed" id="file-1" data-path="big2.txt">`)
+	assert.Contains(t, body, `class="diff-comment-count" title="Unresolved comment threads">1</span>`)
+}

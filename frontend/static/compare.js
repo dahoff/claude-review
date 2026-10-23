@@ -108,10 +108,11 @@
             return;
         }
 
-        // Rows the selection touches on the new side
+        // Rows whose new-side text is part of the selection. A triple-click ends the range at the
+        // start of the next row, which touches that row without selecting any of it.
         const lines = [];
         section.querySelectorAll('tr.diff-row[data-new-line]').forEach((row) => {
-            if (range.intersectsNode(row)) {
+            if (range.intersectsNode(row) && selectedTextIn(range, row.querySelector('td.diff-new'))) {
                 lines.push(parseInt(row.dataset.newLine, 10));
             }
         });
@@ -127,6 +128,19 @@
             selectedText: text,
         };
         showCommentButton(event.clientX, event.clientY);
+    }
+
+    // selectedTextIn returns the part of cell's text that lies inside range.
+    function selectedTextIn(range, cell) {
+        const part = document.createRange();
+        part.selectNodeContents(cell);
+        if (range.compareBoundaryPoints(Range.START_TO_START, part) > 0) {
+            part.setStart(range.startContainer, range.startOffset);
+        }
+        if (range.compareBoundaryPoints(Range.END_TO_END, part) < 0) {
+            part.setEnd(range.endContainer, range.endOffset);
+        }
+        return part.toString().trim();
     }
 
     // rowOf returns the diff row containing node when node is in a new-side cell.

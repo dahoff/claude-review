@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -60,6 +61,7 @@ type compareFile struct {
 	ID        string
 	Segments  []DiffSegment
 	Collapsed bool
+	Comments  int // unresolved threads shown in this section
 }
 
 func handleCompare(w http.ResponseWriter, r *http.Request) {
@@ -107,10 +109,11 @@ func handleCompare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows := map[string][]DiffRow{}
-	for _, f := range changed {
+	for i, f := range changed {
+		// One unreadable file shouldn't hide the rest of the changes
 		if rows[f.Path], err = fileRows(projectDir, comparison, f); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			log.Printf("Failed to diff %s: %v", f.Path, err)
+			changed[i].Skipped = "unreadable"
 		}
 	}
 
@@ -127,7 +130,11 @@ func handleCompare(w http.ResponseWriter, r *http.Request) {
 
 	// Keep commented lines visible when folding unchanged lines away
 	keep := map[string]map[int]bool{}
+	threadCounts := map[string]int{}
 	for _, p := range placements {
+		if p.Where != "other" {
+			threadCounts[p.File]++
+		}
 		if p.Where == "line" {
 			if keep[p.File] == nil {
 				keep[p.File] = map[int]bool{}
@@ -144,7 +151,9 @@ func handleCompare(w http.ResponseWriter, r *http.Request) {
 			ChangedFile: f,
 			ID:          fmt.Sprintf("file-%d", i),
 			Segments:    foldRows(rows[f.Path], keep[f.Path], diffContextLines),
-			Collapsed:   f.Additions+f.Deletions > largeDiffLines,
+			Comments:    threadCounts[f.Path],
+			// Never hide a file's comments behind a collapsed section
+			Collapsed: f.Additions+f.Deletions > largeDiffLines && threadCounts[f.Path] == 0,
 		}
 		if f.Status != "deleted" {
 			watchPaths = append(watchPaths, f.Path)

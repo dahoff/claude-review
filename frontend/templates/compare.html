@@ -21,20 +21,20 @@
         <div class="compare-controls">
             <nav class="compare-modes">
                 <a
-                    class="compare-mode{{if eq $c.Mode "uncommitted"}} active{{end}}"
+                    class="compare-mode{{if eq $c.Mode `uncommitted`}} active{{end}}"
                     data-mode="uncommitted"
                     href="?mode=uncommitted"
                     >Uncommitted</a
                 >
                 <a
-                    class="compare-mode{{if eq $c.Mode "base"}} active{{end}}"
+                    class="compare-mode{{if eq $c.Mode `base`}} active{{end}}"
                     data-mode="base"
                     href="?mode=base{{with .DefaultBase}}&base={{. | urlquery}}{{end}}"
                     >Since base</a
                 >
                 {{if .Commits}}
                 <a
-                    class="compare-mode{{if eq $c.Mode "commit"}} active{{end}}"
+                    class="compare-mode{{if eq $c.Mode `commit`}} active{{end}}"
                     data-mode="commit"
                     href="?mode=commit&commit={{(index .Commits 0).SHA}}"
                     >Single commit</a
@@ -89,17 +89,19 @@
         <section class="diff-file{{if .Collapsed}} collapsed{{end}}" id="{{.ID}}" data-path="{{.Path}}">
             <div class="diff-file-header">
                 <button type="button" class="diff-file-toggle" title="Collapse or expand this file">▾</button>
-                <span class="diff-file-path"
-                    >{{if .OldPath}}{{.OldPath}} → {{end}}{{.Path}}</span
-                >
+                <span class="diff-file-path">{{if .OldPath}}{{.OldPath}} → {{end}}{{.Path}}</span>
                 <span class="diff-status diff-status-{{.Status}}">{{.Status}}</span>
-                {{if not .Binary}}
+                {{if .Comments}}
+                <span class="diff-comment-count" title="Unresolved comment threads">{{.Comments}}</span>
+                {{end}} {{if not .Binary}}
                 <span class="diff-additions">+{{.Additions}}</span>
                 <span class="diff-deletions">−{{.Deletions}}</span>
                 {{end}}
             </div>
             <div class="diff-file-comments"></div>
-            {{if .Binary}}
+            {{if .Skipped}}
+            <p class="diff-binary">Contents not shown: {{.Skipped}}</p>
+            {{else if .Binary}}
             <p class="diff-binary">Binary file changed</p>
             {{else if not .Segments}}
             <p class="diff-binary">Empty file</p>

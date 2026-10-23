@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -226,4 +228,42 @@ func TestFileRows_Binary(t *testing.T) {
 	rows, err := fileRows(t.TempDir(), Comparison{}, ChangedFile{Path: "bin.dat", Binary: true})
 	require.NoError(t, err)
 	assert.Nil(t, rows)
+}
+
+func TestListChangedFiles_UnreadableUntrackedEntries(t *testing.T) {
+	dir := newTestRepo(t)
+	commitFile(t, dir, "a.txt", "a\n", "first")
+
+	nested := filepath.Join(dir, "nested")
+	git(t, dir, "init", "-q", nested)
+	writeFile(t, nested, "inner.txt", "inner\n")
+	git(t, nested, "add", "-A")
+	git(t, nested, "commit", "-q", "-m", "inner")
+	require.NoError(t, os.Symlink("missing-target", filepath.Join(dir, "dangling")))
+	require.NoError(t, os.Symlink("a.txt", filepath.Join(dir, "link")))
+	writeFile(t, dir, "big.log", strings.Repeat("x", maxUntrackedFileBytes+1))
+
+	c, err := resolveComparison(dir, ModeUncommitted, "", "")
+	require.NoError(t, err)
+	files, err := listChangedFiles(dir, c)
+	require.NoError(t, err)
+	byPath := changedByPath(files)
+
+	assert.Equal(t, "directory", byPath["nested/"].Skipped)
+	assert.Equal(t, "too large to show", byPath["big.log"].Skipped)
+	assert.Equal(t, "", byPath["link"].Skipped)
+	assert.Equal(t, "", byPath["dangling"].Skipped)
+
+	for _, f := range files {
+		_, err := fileRows(dir, c, f)
+		assert.NoError(t, err, f.Path)
+	}
+
+	// Symlinks show their target, as git does, not the linked file's contents
+	rows, err := fileRows(dir, c, byPath["link"])
+	require.NoError(t, err)
+	assert.Equal(t, []DiffRow{{Kind: "add", NewLine: 1, NewText: "a.txt"}}, rows)
+	rows, err = fileRows(dir, c, byPath["dangling"])
+	require.NoError(t, err)
+	assert.Equal(t, []DiffRow{{Kind: "add", NewLine: 1, NewText: "missing-target"}}, rows)
 }

@@ -19,6 +19,9 @@ const (
 // minHiddenRows is the shortest run of unchanged rows worth folding away.
 const minHiddenRows = 4
 
+// maxUntrackedFileBytes is the largest untracked file whose contents the compare page shows.
+const maxUntrackedFileBytes = 1 << 20
+
 // ChangedFile is one file in a comparison. Paths are relative to the project directory.
 type ChangedFile struct {
 	Path      string
@@ -27,6 +30,7 @@ type ChangedFile struct {
 	Binary    bool
 	Additions int
 	Deletions int
+	Skipped   string // why the contents aren't shown (directory, too large, unreadable), if they aren't
 }
 
 // DiffRow is one row of a split diff. A line number of 0 means that side is empty.
@@ -108,20 +112,40 @@ func listChangedFiles(dir string, c Comparison) ([]ChangedFile, error) {
 			if path == "" {
 				continue
 			}
-			f := ChangedFile{Path: path, Status: "added"}
-			if content, err := os.ReadFile(filepath.Join(dir, path)); err == nil {
-				if isBinary(content) {
-					f.Binary = true
-				} else {
-					f.Additions = len(splitLines(string(content)))
-				}
-			}
-			files = append(files, f)
+			files = append(files, untrackedFile(dir, path))
 		}
 	}
 
 	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
 	return files, nil
+}
+
+// untrackedFile describes an untracked entry, which may be a nested repository, a symlink
+// or a file too large to show.
+func untrackedFile(dir, path string) ChangedFile {
+	f := ChangedFile{Path: path, Status: "added"}
+	info, err := os.Lstat(filepath.Join(dir, path))
+	switch {
+	case err != nil:
+		f.Skipped = "unreadable"
+	case info.IsDir():
+		f.Skipped = "directory"
+	case info.Mode()&os.ModeSymlink != 0:
+		f.Additions = 1
+	case info.Size() > maxUntrackedFileBytes:
+		f.Skipped = "too large to show"
+	default:
+		content, err := os.ReadFile(filepath.Join(dir, path))
+		switch {
+		case err != nil:
+			f.Skipped = "unreadable"
+		case isBinary(content):
+			f.Binary = true
+		default:
+			f.Additions = len(splitLines(string(content)))
+		}
+	}
+	return f
 }
 
 type fileStat struct {
@@ -165,13 +189,18 @@ func splitLines(s string) []string {
 
 // fileRows returns the split diff rows covering every line of both versions of a file.
 func fileRows(dir string, c Comparison, f ChangedFile) ([]DiffRow, error) {
-	if f.Binary {
+	if f.Binary || f.Skipped != "" {
 		return nil, nil
 	}
 
 	// Files added in the working tree may be untracked, so git cannot diff them
 	if c.TargetRev == "" && f.Status == "added" {
-		content, err := os.ReadFile(filepath.Join(dir, f.Path))
+		path := filepath.Join(dir, f.Path)
+		// Like git, show a symlink as its target rather than the linked file
+		if target, err := os.Readlink(path); err == nil {
+			return []DiffRow{{Kind: "add", NewLine: 1, NewText: target}}, nil
+		}
+		content, err := os.ReadFile(path)
 		if err != nil {
 			return nil, err
 		}

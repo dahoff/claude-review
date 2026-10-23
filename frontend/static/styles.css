@@ -928,6 +928,15 @@ body.js .compare-picker-submit {
     color: #0366d6;
 }
 
+.diff-comment-count {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0 6px;
+    border-radius: 10px;
+    background-color: #fff8c5;
+    border: 1px solid #f9c513;
+}
+
 .diff-file.collapsed .diff-table,
 .diff-file.collapsed .diff-binary,
 .diff-file.collapsed .diff-file-comments {
