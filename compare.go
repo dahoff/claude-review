@@ -16,7 +16,12 @@ type commentPlacement struct {
 }
 
 // placeComments places each root comment, keyed by its ID.
-func placeComments(files []ChangedFile, rows map[string][]DiffRow, comments []Comment, readOnly bool) map[int]commentPlacement {
+func placeComments(
+	files []ChangedFile,
+	rows map[string][]DiffRow,
+	comments []Comment,
+	readOnly bool,
+) map[int]commentPlacement {
 	inDiff := map[string]bool{}
 	for _, f := range files {
 		inDiff[f.Path] = true

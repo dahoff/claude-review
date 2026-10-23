@@ -26,7 +26,9 @@ func newTestRepo(t *testing.T) string {
 // git runs a git command in dir and returns its trimmed output.
 func git(t *testing.T, dir string, args ...string) string {
 	t.Helper()
-	cmd := exec.Command("git", append([]string{"-c", "user.name=test", "-c", "user.email=test@example.com"}, args...)...)
+	cmd := exec.Command(
+		"git",
+		append([]string{"-c", "user.name=test", "-c", "user.email=test@example.com"}, args...)...)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(out))
@@ -179,7 +181,11 @@ func TestRecentCommits(t *testing.T) {
 	require.Len(t, commits, 3)
 	assert.Equal(t, third, commits[0].SHA)
 	assert.Equal(t, third[:len(commits[0].ShortSHA)], commits[0].ShortSHA)
-	assert.Equal(t, []string{"three", "two", "one"}, []string{commits[0].Subject, commits[1].Subject, commits[2].Subject})
+	assert.Equal(
+		t,
+		[]string{"three", "two", "one"},
+		[]string{commits[0].Subject, commits[1].Subject, commits[2].Subject},
+	)
 }
 
 func mustRecentCommits(t *testing.T, dir string) []CommitInfo {

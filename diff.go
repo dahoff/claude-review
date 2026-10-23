@@ -206,7 +206,16 @@ func parseUnifiedRows(diff string) []DiffRow {
 		for i := 0; i < max(len(dels), len(adds)); i++ {
 			switch {
 			case i < len(dels) && i < len(adds):
-				rows = append(rows, DiffRow{Kind: "change", OldLine: dels[i].OldLine, OldText: dels[i].OldText, NewLine: adds[i].NewLine, NewText: adds[i].NewText})
+				rows = append(
+					rows,
+					DiffRow{
+						Kind:    "change",
+						OldLine: dels[i].OldLine,
+						OldText: dels[i].OldText,
+						NewLine: adds[i].NewLine,
+						NewText: adds[i].NewText,
+					},
+				)
 			case i < len(dels):
 				rows = append(rows, dels[i])
 			default:
@@ -230,7 +239,10 @@ func parseUnifiedRows(diff string) []DiffRow {
 		switch line[0] {
 		case ' ':
 			flush()
-			rows = append(rows, DiffRow{Kind: "context", OldLine: oldLine, NewLine: newLine, OldText: line[1:], NewText: line[1:]})
+			rows = append(
+				rows,
+				DiffRow{Kind: "context", OldLine: oldLine, NewLine: newLine, OldText: line[1:], NewText: line[1:]},
+			)
 			oldLine++
 			newLine++
 		case '-':

@@ -249,3 +249,18 @@ func TestE2E_Compare_ChangesLink(t *testing.T) {
 		assert.Contains(t, string(body), `class="changes-link"`, path)
 	}
 }
+
+func TestE2E_Compare_ScriptServed(t *testing.T) {
+	env := setupE2E(t)
+	setupGitProject(t, env)
+
+	resp, err := http.Get(env.BaseURL + "/static/compare.js")
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Contains(t, resp.Header.Get("Content-Type"), "javascript")
+
+	_, body := getCompare(t, env, "")
+	assert.Contains(t, body, `src="/static/compare.js"`)
+	assert.Regexp(t, `<script nonce="[0-9a-f]{32}">`, body)
+}

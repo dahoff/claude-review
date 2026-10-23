@@ -43,7 +43,9 @@ type CommitInfo struct {
 // gitOutput runs git in dir and returns its stdout. Paths in the output are not quoted,
 // and pathspecs are taken literally.
 func gitOutput(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", dir, "-c", "core.quotePath=false", "--literal-pathspecs"}, args...)...)
+	cmd := exec.Command(
+		"git",
+		append([]string{"-C", dir, "-c", "core.quotePath=false", "--literal-pathspecs"}, args...)...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
@@ -131,7 +133,8 @@ func resolveComparison(dir, mode, baseBranch, commit string) (Comparison, error)
 	case "":
 		if base := defaultBaseBranch(dir); base != "" && currentBranch(dir) != "" && currentBranch(dir) != base {
 			if mergeBase, err := mergeBaseWith(dir, base); err == nil {
-				if out, err := gitOutput(dir, "rev-list", "--count", mergeBase+"..HEAD"); err == nil && strings.TrimSpace(out) != "0" {
+				if out, err := gitOutput(dir, "rev-list", "--count", mergeBase+"..HEAD"); err == nil &&
+					strings.TrimSpace(out) != "0" {
 					return Comparison{Mode: ModeBase, BaseBranch: base, BaseRev: mergeBase}, nil
 				}
 			}

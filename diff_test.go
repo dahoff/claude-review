@@ -112,12 +112,20 @@ func TestListChangedFiles_WorkingTree(t *testing.T) {
 	for _, f := range files {
 		paths = append(paths, f.Path)
 	}
-	assert.Equal(t, []string{"-dash.txt", "bin.dat", "empty.txt", "gone.txt", "mod.txt", "new file.txt", "new name.txt", "ünï.txt"}, paths)
+	assert.Equal(
+		t,
+		[]string{"-dash.txt", "bin.dat", "empty.txt", "gone.txt", "mod.txt", "new file.txt", "new name.txt", "ünï.txt"},
+		paths,
+	)
 
 	byPath := changedByPath(files)
 	assert.Equal(t, ChangedFile{Path: "mod.txt", Status: "modified", Additions: 2, Deletions: 1}, byPath["mod.txt"])
 	assert.Equal(t, ChangedFile{Path: "gone.txt", Status: "deleted", Deletions: 2}, byPath["gone.txt"])
-	assert.Equal(t, ChangedFile{Path: "new name.txt", OldPath: "old name.txt", Status: "renamed"}, byPath["new name.txt"])
+	assert.Equal(
+		t,
+		ChangedFile{Path: "new name.txt", OldPath: "old name.txt", Status: "renamed"},
+		byPath["new name.txt"],
+	)
 	assert.Equal(t, ChangedFile{Path: "-dash.txt", Status: "modified", Additions: 1, Deletions: 1}, byPath["-dash.txt"])
 	assert.Equal(t, ChangedFile{Path: "new file.txt", Status: "added", Additions: 2}, byPath["new file.txt"])
 	assert.Equal(t, ChangedFile{Path: "empty.txt", Status: "added"}, byPath["empty.txt"])
@@ -204,7 +212,11 @@ func TestFileRows_FullContext(t *testing.T) {
 	for _, r := range rows {
 		if r.Kind != "context" {
 			changes++
-			assert.Equal(t, DiffRow{Kind: "change", OldLine: 25, NewLine: 25, OldText: "line 25", NewText: "changed"}, r)
+			assert.Equal(
+				t,
+				DiffRow{Kind: "change", OldLine: 25, NewLine: 25, OldText: "line 25", NewText: "changed"},
+				r,
+			)
 		}
 	}
 	assert.Equal(t, 1, changes)
