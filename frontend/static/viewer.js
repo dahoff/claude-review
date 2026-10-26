@@ -343,9 +343,9 @@
                 const highlight = document.querySelector(`.comment-highlight[data-comment-id="${comment.id}"]`);
                 if (highlight) {
                     highlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    highlight.style.backgroundColor = '#ffeb99';
+                    highlight.style.backgroundColor = 'var(--highlight-hover)';
                     setTimeout(() => {
-                        highlight.style.backgroundColor = '#fff8c5';
+                        highlight.style.backgroundColor = '';
                     }, 1000);
                 }
             });

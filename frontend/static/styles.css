@@ -1,3 +1,100 @@
+/* Theme tokens: dark by default, light when <html data-theme="light"> (set by theme.js) */
+:root {
+    color-scheme: dark;
+    --fg: #e6edf3;
+    --fg-muted: #9198a1;
+    --fg-subtle: #8b949e;
+    --fg-faint: #6e7681;
+    --bg: #0d1117;
+    --bg-subtle: #161b22;
+    --bg-inset: #151b23;
+    --bg-elevated: #161b22;
+    --bg-hover: #21262d;
+    --bg-code: #262c36;
+    --bg-code-soft: rgba(110, 118, 129, 0.2);
+    --border: #30363d;
+    --border-muted: #21262d;
+    --link: #4493f8;
+    --accent: #1f6feb;
+    --accent-hover: #388bfd;
+    --focus-ring: rgba(56, 139, 253, 0.4);
+    --shadow: rgba(1, 4, 9, 0.8);
+    --danger: #da3633;
+    --danger-fg: #f85149;
+    --danger-strong: #f85149;
+    --danger-hover-bg: rgba(248, 81, 73, 0.15);
+    --success-fg: #3fb950;
+    --success-border: #2ea043;
+    --success-bg: rgba(46, 160, 67, 0.15);
+    --success-strong: #3fb950;
+    --success-hover-bg: rgba(46, 160, 67, 0.3);
+    --success-hover-fg: #56d364;
+    --info-bg: rgba(56, 139, 253, 0.15);
+    --info-fg: #4493f8;
+    --info-hover-bg: rgba(56, 139, 253, 0.3);
+    --info-hover-fg: #79c0ff;
+    --neutral-border: #6e7681;
+    --neutral-hover-border: #8b949e;
+    --highlight-bg: rgba(187, 128, 9, 0.3);
+    --highlight-hover: rgba(187, 128, 9, 0.5);
+    --highlight-border: #d29922;
+    --notice-bg: rgba(187, 128, 9, 0.15);
+    --diff-del-bg: rgba(248, 81, 73, 0.1);
+    --diff-del-num: rgba(248, 81, 73, 0.25);
+    --diff-add-bg: rgba(46, 160, 67, 0.15);
+    --diff-add-num: rgba(63, 185, 80, 0.3);
+    --gap-bg: rgba(56, 139, 253, 0.1);
+    --gap-hover: rgba(56, 139, 253, 0.2);
+}
+
+:root[data-theme='light'] {
+    color-scheme: light;
+    --fg: #24292e;
+    --fg-muted: #586069;
+    --fg-subtle: #6a737d;
+    --fg-faint: #959da5;
+    --bg: #fff;
+    --bg-subtle: #f6f8fa;
+    --bg-inset: #fafbfc;
+    --bg-elevated: #fff;
+    --bg-hover: #f3f4f6;
+    --bg-code: #f0f0f0;
+    --bg-code-soft: rgba(27, 31, 35, 0.05);
+    --border: #d1d5da;
+    --border-muted: #e1e4e8;
+    --link: #0366d6;
+    --accent: #0366d6;
+    --accent-hover: #0256c7;
+    --focus-ring: rgba(3, 102, 214, 0.3);
+    --shadow: rgba(0, 0, 0, 0.12);
+    --danger: #d73a49;
+    --danger-fg: #cb2431;
+    --danger-strong: #cf222e;
+    --danger-hover-bg: #ffebe9;
+    --success-fg: #22863a;
+    --success-border: #34d058;
+    --success-bg: #dafbe1;
+    --success-strong: #1a7f37;
+    --success-hover-bg: #aceebb;
+    --success-hover-fg: #116329;
+    --info-bg: #ddf4ff;
+    --info-fg: #0969da;
+    --info-hover-bg: #b6e3ff;
+    --info-hover-fg: #0550ae;
+    --neutral-border: #6e7781;
+    --neutral-hover-border: #424a53;
+    --highlight-bg: #fff8c5;
+    --highlight-hover: #ffeb99;
+    --highlight-border: #f9c513;
+    --notice-bg: #fffbdd;
+    --diff-del-bg: #ffeef0;
+    --diff-del-num: #ffdce0;
+    --diff-add-bg: #e6ffed;
+    --diff-add-num: #cdffd8;
+    --gap-bg: #f1f8ff;
+    --gap-hover: #dbedff;
+}
+
 /* Base styles */
 * {
     box-sizing: border-box;
@@ -9,8 +106,8 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
-    color: #24292e;
-    background-color: #fff;
+    color: var(--fg);
+    background-color: var(--bg);
 }
 
 h1,
@@ -27,13 +124,13 @@ h6 {
 
 h1 {
     font-size: 2em;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border-muted);
     padding-bottom: 0.3em;
 }
 
 h2 {
     font-size: 1.5em;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--border-muted);
     padding-bottom: 0.3em;
 }
 
@@ -51,7 +148,7 @@ h5 {
 
 h6 {
     font-size: 0.85em;
-    color: #666;
+    color: var(--fg-muted);
 }
 
 /* Markdown content (viewer page) */
@@ -65,7 +162,7 @@ p {
 }
 
 a {
-    color: #0366d6;
+    color: var(--link);
     text-decoration: none;
 }
 
@@ -74,7 +171,7 @@ a:hover {
 }
 
 code {
-    background-color: #f0f0f0;
+    background-color: var(--bg-code);
     border-radius: 3px;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
     font-size: 85%;
@@ -83,7 +180,7 @@ code {
 }
 
 pre {
-    background-color: #f0f0f0;
+    background-color: var(--bg-code);
     border-radius: 3px;
     line-height: 1.45;
     overflow: auto;
@@ -102,8 +199,8 @@ pre code {
 }
 
 blockquote {
-    border-left: 4px solid #ddd;
-    color: #666;
+    border-left: 4px solid var(--border);
+    color: var(--fg-muted);
     margin: 0 0 1em 0;
     padding: 0 1em;
 }
@@ -128,18 +225,18 @@ table {
 
 table th,
 table td {
-    border: 1px solid #ddd;
+    border: 1px solid var(--border);
     padding: 8px 12px;
     text-align: left;
 }
 
 table th {
-    background-color: #f6f8fa;
+    background-color: var(--bg-subtle);
     font-weight: 600;
 }
 
 table tr:nth-child(even) {
-    background-color: #f6f8fa;
+    background-color: var(--bg-subtle);
 }
 
 img {
@@ -148,7 +245,7 @@ img {
 }
 
 hr {
-    background-color: #e1e4e8;
+    background-color: var(--border-muted);
     border: 0;
     height: 2px;
     margin: 1.5em 0;
@@ -172,11 +269,11 @@ ul.contains-task-list li {
     padding: 10px 0;
     margin-bottom: 20px;
     font-size: 14px;
-    color: #586069;
+    color: var(--fg-muted);
 }
 
 .breadcrumb a {
-    color: #0366d6;
+    color: var(--link);
     text-decoration: none;
 }
 
@@ -197,18 +294,18 @@ ul.contains-task-list li {
 .project-item {
     padding: 15px;
     margin: 10px 0;
-    border: 1px solid #e1e4e8;
+    border: 1px solid var(--border-muted);
     border-radius: 6px;
     transition: background-color 0.2s;
 }
 
 .project-item:hover {
-    background-color: #f6f8fa;
+    background-color: var(--bg-subtle);
 }
 
 .project-link {
     text-decoration: none;
-    color: #0366d6;
+    color: var(--link);
     font-weight: 600;
     font-size: 18px;
 }
@@ -218,14 +315,14 @@ ul.contains-task-list li {
 }
 
 .project-path {
-    color: #586069;
+    color: var(--fg-muted);
     font-size: 14px;
     margin-top: 5px;
 }
 
 .no-projects {
     text-align: center;
-    color: #586069;
+    color: var(--fg-muted);
     padding: 40px;
 }
 
@@ -241,7 +338,7 @@ ul.contains-task-list li {
 
 .entry-link {
     text-decoration: none;
-    color: #0366d6;
+    color: var(--link);
     font-size: 16px;
 }
 
@@ -251,7 +348,7 @@ ul.contains-task-list li {
 
 .entry-comment-count {
     margin-left: 8px;
-    background: #0366d6;
+    background: var(--accent);
     color: white;
     padding: 1px 7px;
     border-radius: 10px;
@@ -261,20 +358,20 @@ ul.contains-task-list li {
 }
 
 .no-content {
-    color: #586069;
+    color: var(--fg-muted);
     padding: 20px;
 }
 
 /* Comment highlights (viewer page) */
 .comment-highlight {
-    background-color: #fff8c5;
-    border-bottom: 2px solid #f9c513;
+    background-color: var(--highlight-bg);
+    border-bottom: 2px solid var(--highlight-border);
     cursor: pointer;
     position: relative;
 }
 
 .comment-highlight:hover {
-    background-color: #ffeb99;
+    background-color: var(--highlight-hover);
 }
 
 .comment-highlight.has-replies {
@@ -282,7 +379,7 @@ ul.contains-task-list li {
 }
 
 .comment-highlight.has-replies:hover {
-    background-color: #fff8c5;
+    background-color: var(--highlight-bg);
 }
 
 /* Comment button (appears on text selection) */
@@ -298,7 +395,7 @@ ul.contains-task-list li {
     border-radius: 50%;
     border: none;
     background-color: transparent;
-    color: #f9c513;
+    color: var(--highlight-border);
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -307,8 +404,8 @@ ul.contains-task-list li {
 }
 
 .comment-add-btn:hover {
-    background-color: #ffeb99;
-    color: #f9c513;
+    background-color: var(--highlight-hover);
+    color: var(--highlight-border);
 }
 
 .comment-icon {
@@ -320,10 +417,10 @@ ul.contains-task-list li {
 #comment-popup {
     position: fixed;
     z-index: 1000;
-    background: white;
-    border: 1px solid #d1d5da;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
     border-radius: 4px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 8px 24px var(--shadow);
     padding: 8px;
     min-width: 500px;
 }
@@ -331,7 +428,7 @@ ul.contains-task-list li {
 #comment-popup textarea {
     font-size: 12px;
     line-height: 1.5;
-    border: 1px solid #d1d5da;
+    border: 1px solid var(--border);
     border-radius: 3px;
     padding: 8px;
     width: 100%;
@@ -342,8 +439,8 @@ ul.contains-task-list li {
 
 #comment-popup textarea:focus {
     outline: none;
-    border-color: #0366d6;
-    box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.3);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .comment-popup-buttons {
@@ -358,35 +455,35 @@ ul.contains-task-list li {
     font-weight: 500;
     padding: 4px 10px;
     border-radius: 3px;
-    border: 1px solid #d1d5da;
-    background-color: #fafbfc;
-    color: #24292e;
+    border: 1px solid var(--border);
+    background-color: var(--bg-inset);
+    color: var(--fg);
     cursor: pointer;
     transition: background-color 0.1s;
 }
 
 .comment-btn:hover {
-    background-color: #f3f4f6;
+    background-color: var(--bg-hover);
 }
 
 .comment-btn-primary {
-    background-color: #0366d6;
+    background-color: var(--accent);
     color: white;
-    border-color: #0366d6;
+    border-color: var(--accent);
 }
 
 .comment-btn-primary:hover {
-    background-color: #0256c7;
+    background-color: var(--accent-hover);
 }
 
 .comment-btn-danger {
-    background-color: #d73a49;
+    background-color: var(--danger);
     color: white;
-    border-color: #d73a49;
+    border-color: var(--danger);
 }
 
 .comment-btn-danger:hover {
-    background-color: #cb2431;
+    background-color: var(--danger-fg);
 }
 
 /* Comment navigation panel */
@@ -394,10 +491,10 @@ ul.contains-task-list li {
     position: fixed;
     top: 20px;
     right: 20px;
-    background: white;
-    border: 1px solid #d1d5da;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
     border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 8px 24px var(--shadow);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -448,16 +545,16 @@ ul.contains-task-list li {
 }
 
 #comment-panel.expanded-wide .comment-panel-header {
-    border-bottom: 1px solid #e1e4e8;
+    border-bottom: 1px solid var(--border-muted);
 }
 
 .comment-panel-header {
     padding: 12px 16px;
-    border-bottom: 1px solid #e1e4e8;
+    border-bottom: 1px solid var(--border-muted);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #f6f8fa;
+    background: var(--bg-subtle);
     user-select: none;
 }
 
@@ -472,15 +569,15 @@ ul.contains-task-list li {
     margin: 0;
     font-size: 14px;
     font-weight: 600;
-    color: #24292e;
+    color: var(--fg);
 }
 
 .panel-resize-btn {
     padding: 4px;
-    border: 1px solid #d1d5da;
+    border: 1px solid var(--border);
     border-radius: 3px;
-    background-color: #fafbfc;
-    color: #586069;
+    background-color: var(--bg-inset);
+    color: var(--fg-muted);
     cursor: pointer;
     transition: all 0.1s;
     display: flex;
@@ -489,8 +586,8 @@ ul.contains-task-list li {
 }
 
 .panel-resize-btn:hover {
-    background-color: #e1e4e8;
-    color: #24292e;
+    background-color: var(--border-muted);
+    color: var(--fg);
 }
 
 .panel-icon {
@@ -506,7 +603,7 @@ ul.contains-task-list li {
 }
 
 .comment-count {
-    background: #0366d6;
+    background: var(--accent);
     color: white;
     padding: 2px 8px;
     border-radius: 12px;
@@ -523,7 +620,7 @@ ul.contains-task-list li {
 
 .thread-item {
     padding: 8px 12px;
-    border-bottom: 1px solid #e1e4e8;
+    border-bottom: 1px solid var(--border-muted);
     /*cursor: default;*/
     transition: background-color 0.1s;
     position: relative;
@@ -539,7 +636,7 @@ ul.contains-task-list li {
 .comment-status-dot {
     width: 10px;
     height: 10px;
-    background-color: #0366d6;
+    background-color: var(--accent);
     border-radius: 50%;
     animation: pulse 2s infinite;
     flex-shrink: 0;
@@ -556,7 +653,7 @@ ul.contains-task-list li {
 }
 
 .thread-item:hover {
-    background-color: #f6f8fa;
+    background-color: var(--bg-subtle);
 }
 
 .thread-item:last-child {
@@ -564,15 +661,15 @@ ul.contains-task-list li {
 }
 
 .thread-item-number {
-    background: #fff8c5;
-    border: 1px solid #f9c513;
+    background: var(--highlight-bg);
+    border: 1px solid var(--highlight-border);
     border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 11px;
     font-weight: 600;
-    color: #24292e;
+    color: var(--fg);
     padding: 1px 4px;
     min-width: 24px;
     flex-shrink: 0;
@@ -585,7 +682,7 @@ ul.contains-task-list li {
 .thread-item-text {
     font-size: 13px;
     font-weight: 500;
-    color: #24292e;
+    color: var(--fg);
     margin-bottom: 4px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -599,7 +696,7 @@ ul.contains-task-list li {
 
 .thread-item-comment {
     font-size: 12px;
-    color: #586069;
+    color: var(--fg-muted);
     overflow: hidden;
     width: 100%;
 }
@@ -632,7 +729,7 @@ ul.contains-task-list li {
 }
 
 .thread-item-comment code {
-    background-color: rgba(27, 31, 35, 0.05);
+    background-color: var(--bg-code-soft);
     border-radius: 3px;
     padding: 0.2em 0.4em;
     font-size: 85%;
@@ -640,7 +737,7 @@ ul.contains-task-list li {
 }
 
 .thread-item-comment pre {
-    background-color: rgba(27, 31, 35, 0.05);
+    background-color: var(--bg-code-soft);
     border-radius: 3px;
     padding: 8px;
     overflow-x: auto;
@@ -662,7 +759,7 @@ ul.contains-task-list li {
 
 /* Thread styling */
 .thread-container {
-    border-bottom: 1px solid #e1e4e8;
+    border-bottom: 1px solid var(--border-muted);
 }
 
 .thread-container:last-child {
@@ -670,11 +767,11 @@ ul.contains-task-list li {
 }
 
 .comment-root {
-    background-color: #f6f8fa;
+    background-color: var(--bg-subtle);
 }
 
 .comment-reply {
-    background-color: #ffffff;
+    background-color: var(--bg-elevated);
     padding: 4px 12px 4px 32px;
 }
 
@@ -688,7 +785,7 @@ ul.contains-task-list li {
 .comment-author-info {
     font-size: 11px;
     font-weight: 600;
-    color: #0366d6;
+    color: var(--link);
     text-transform: capitalize;
     display: flex;
     align-items: center;
@@ -702,7 +799,7 @@ ul.contains-task-list li {
 .comment-timestamp {
     font-size: 10px;
     font-weight: 400;
-    color: #6a737d;
+    color: var(--fg-subtle);
     text-transform: none;
 }
 
@@ -724,27 +821,27 @@ ul.contains-task-list li {
 }
 
 .comment-badge-reply {
-    background-color: #ddf4ff;
-    border-color: #0969da;
-    color: #0969da;
+    background-color: var(--info-bg);
+    border-color: var(--info-fg);
+    color: var(--info-fg);
 }
 
 .comment-badge-reply:hover {
-    background-color: #b6e3ff;
-    border-color: #0550ae;
-    color: #0550ae;
+    background-color: var(--info-hover-bg);
+    border-color: var(--info-hover-fg);
+    color: var(--info-hover-fg);
 }
 
 .comment-badge-edit {
-    background-color: #f6f8fa;
-    border-color: #6e7781;
-    color: #57606a;
+    background-color: var(--bg-subtle);
+    border-color: var(--neutral-border);
+    color: var(--fg-muted);
 }
 
 .comment-badge-edit:hover:not(:disabled) {
-    background-color: #eaeef2;
-    border-color: #424a53;
-    color: #24292f;
+    background-color: var(--bg-hover);
+    border-color: var(--neutral-hover-border);
+    color: var(--fg);
 }
 
 .comment-badge-edit:disabled {
@@ -753,22 +850,22 @@ ul.contains-task-list li {
 }
 
 .comment-badge-resolve {
-    background-color: #dafbe1;
-    border-color: #1a7f37;
-    color: #1a7f37;
+    background-color: var(--success-bg);
+    border-color: var(--success-strong);
+    color: var(--success-strong);
 }
 
 .comment-badge-resolve:hover {
-    background-color: #aceebb;
-    border-color: #116329;
-    color: #116329;
+    background-color: var(--success-hover-bg);
+    border-color: var(--success-hover-fg);
+    color: var(--success-hover-fg);
 }
 
 /* Changes link (directory and viewer breadcrumbs) */
 .changes-link {
     margin-left: 16px;
     padding: 1px 8px;
-    border: 1px solid #d1d5da;
+    border: 1px solid var(--border);
     border-radius: 12px;
     font-size: 12px;
 }
@@ -788,7 +885,7 @@ body.compare-page {
 
 .compare-modes {
     display: flex;
-    border: 1px solid #d1d5da;
+    border: 1px solid var(--border);
     border-radius: 6px;
     overflow: hidden;
 }
@@ -796,8 +893,8 @@ body.compare-page {
 .compare-mode {
     padding: 4px 12px;
     font-size: 13px;
-    color: #24292e;
-    border-right: 1px solid #d1d5da;
+    color: var(--fg);
+    border-right: 1px solid var(--border);
 }
 
 .compare-mode:last-child {
@@ -805,12 +902,12 @@ body.compare-page {
 }
 
 .compare-mode:hover {
-    background-color: #f6f8fa;
+    background-color: var(--bg-subtle);
     text-decoration: none;
 }
 
 .compare-mode.active {
-    background-color: #0366d6;
+    background-color: var(--accent);
     color: white;
 }
 
@@ -831,7 +928,7 @@ body.js .compare-picker-submit {
 }
 
 .compare-readonly-note {
-    color: #6a737d;
+    color: var(--fg-subtle);
 }
 
 .compare-refresh {
@@ -841,29 +938,29 @@ body.js .compare-picker-submit {
 
 .compare-notice {
     padding: 8px 12px;
-    background-color: #fffbdd;
-    border: 1px solid #f9c513;
+    background-color: var(--notice-bg);
+    border: 1px solid var(--highlight-border);
     border-radius: 6px;
     font-size: 13px;
 }
 
 .compare-summary {
     font-size: 13px;
-    color: #586069;
+    color: var(--fg-muted);
 }
 
 .diff-additions {
-    color: #22863a;
+    color: var(--success-fg);
     font-weight: 600;
 }
 
 .diff-deletions {
-    color: #cb2431;
+    color: var(--danger-fg);
     font-weight: 600;
 }
 
 .diff-file {
-    border: 1px solid #d1d5da;
+    border: 1px solid var(--border);
     border-radius: 6px;
     margin-bottom: 16px;
 }
@@ -876,8 +973,8 @@ body.js .compare-picker-submit {
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
-    background-color: #f6f8fa;
-    border-bottom: 1px solid #d1d5da;
+    background-color: var(--bg-subtle);
+    border-bottom: 1px solid var(--border);
     border-radius: 6px 6px 0 0;
     font-size: 13px;
 }
@@ -892,7 +989,7 @@ body.js .compare-picker-submit {
     cursor: pointer;
     font-size: 14px;
     padding: 0 4px;
-    color: #586069;
+    color: var(--fg-muted);
 }
 
 .diff-file.collapsed .diff-file-toggle {
@@ -909,23 +1006,23 @@ body.js .compare-picker-submit {
     font-size: 11px;
     padding: 0 6px;
     border-radius: 10px;
-    border: 1px solid #d1d5da;
-    color: #586069;
+    border: 1px solid var(--border);
+    color: var(--fg-muted);
 }
 
 .diff-status-added {
-    border-color: #34d058;
-    color: #22863a;
+    border-color: var(--success-border);
+    color: var(--success-fg);
 }
 
 .diff-status-deleted {
-    border-color: #d73a49;
-    color: #cb2431;
+    border-color: var(--danger);
+    color: var(--danger-fg);
 }
 
 .diff-status-renamed {
-    border-color: #0366d6;
-    color: #0366d6;
+    border-color: var(--accent);
+    color: var(--link);
 }
 
 .diff-comment-count {
@@ -933,8 +1030,8 @@ body.js .compare-picker-submit {
     font-weight: 600;
     padding: 0 6px;
     border-radius: 10px;
-    background-color: #fff8c5;
-    border: 1px solid #f9c513;
+    background-color: var(--highlight-bg);
+    border: 1px solid var(--highlight-border);
 }
 
 .diff-file.collapsed .diff-table,
@@ -946,14 +1043,14 @@ body.js .compare-picker-submit {
 .diff-binary {
     padding: 8px 12px;
     margin: 0;
-    color: #6a737d;
+    color: var(--fg-subtle);
     font-size: 13px;
 }
 
 .diff-file-comments:not(:empty) {
     padding: 8px 12px;
-    border-bottom: 1px solid #d1d5da;
-    background-color: #fafbfc;
+    border-bottom: 1px solid var(--border);
+    background-color: var(--bg-inset);
 }
 
 .diff-file-comments h3,
@@ -989,36 +1086,36 @@ table.diff-table tr:nth-child(even) {
 table.diff-table td.diff-num-old,
 table.diff-table td.diff-num-new {
     text-align: right;
-    color: #959da5;
+    color: var(--fg-faint);
     user-select: none;
 }
 
 table.diff-table td.diff-num-new {
-    border-left: 1px solid #e1e4e8;
+    border-left: 1px solid var(--border-muted);
 }
 
 .diff-del .diff-old,
 .diff-change .diff-old {
-    background-color: #ffeef0;
+    background-color: var(--diff-del-bg);
 }
 
 .diff-del .diff-num-old,
 .diff-change .diff-num-old {
-    background-color: #ffdce0;
+    background-color: var(--diff-del-num);
 }
 
 .diff-add .diff-new,
 .diff-change .diff-new {
-    background-color: #e6ffed;
+    background-color: var(--diff-add-bg);
 }
 
 .diff-add .diff-num-new,
 .diff-change .diff-num-new {
-    background-color: #cdffd8;
+    background-color: var(--diff-add-num);
 }
 
 table.diff-table td.diff-empty {
-    background-color: #fafbfc;
+    background-color: var(--bg-inset);
 }
 
 /* Keep a drag on one side of the table from selecting the other side */
@@ -1029,37 +1126,37 @@ table.diff-table td.diff-empty {
 
 .diff-gap-toggle td {
     padding: 0;
-    background-color: #f1f8ff;
+    background-color: var(--gap-bg);
 }
 
 .diff-gap-toggle button {
     width: 100%;
     border: none;
     background: none;
-    color: #586069;
+    color: var(--fg-muted);
     font-size: 12px;
     cursor: pointer;
     padding: 2px;
 }
 
 .diff-gap-toggle button:hover {
-    background-color: #dbedff;
-    color: #0366d6;
+    background-color: var(--gap-hover);
+    color: var(--link);
 }
 
 table.diff-table .diff-thread-row td {
     padding: 8px 12px;
-    background-color: #fafbfc;
-    border-top: 1px solid #e1e4e8;
-    border-bottom: 1px solid #e1e4e8;
+    background-color: var(--bg-inset);
+    border-top: 1px solid var(--border-muted);
+    border-bottom: 1px solid var(--border-muted);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     white-space: normal;
 }
 
 .diff-thread {
     max-width: 800px;
-    background: white;
-    border: 1px solid #d1d5da;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
     border-radius: 6px;
     margin-bottom: 8px;
     font-size: 13px;
@@ -1073,7 +1170,7 @@ table.diff-table .diff-thread-row td {
 .diff-thread > .thread-item-text {
     padding: 6px 12px 0;
     white-space: normal;
-    color: #586069;
+    color: var(--fg-muted);
 }
 
 .diff-thread .thread-item:hover {
@@ -1094,7 +1191,7 @@ table.diff-table .diff-thread-row td {
     width: 100%;
     font-size: 12px;
     line-height: 1.5;
-    border: 1px solid #d1d5da;
+    border: 1px solid var(--border);
     border-radius: 3px;
     padding: 8px;
     resize: vertical;
@@ -1106,15 +1203,15 @@ table.diff-table .diff-thread-row td {
     padding: 4px 10px;
     font-size: 12px;
     font-weight: 500;
-    border: 1px solid #f9c513;
+    border: 1px solid var(--highlight-border);
     border-radius: 3px;
-    background-color: #fff8c5;
+    background-color: var(--highlight-bg);
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 6px var(--shadow);
 }
 
 .comment-button:hover {
-    background-color: #ffeb99;
+    background-color: var(--highlight-hover);
 }
 
 #other-comments h2 {
@@ -1122,13 +1219,13 @@ table.diff-table .diff-thread-row td {
 }
 
 .comment-badge-delete {
-    background-color: #fff;
-    border-color: #cf222e;
-    color: #cf222e;
+    background-color: var(--bg-elevated);
+    border-color: var(--danger-strong);
+    color: var(--danger-strong);
 }
 
 .comment-badge-delete:hover:not(:disabled) {
-    background-color: #ffebe9;
+    background-color: var(--danger-hover-bg);
 }
 
 .comment-badge-delete:disabled {
@@ -1150,7 +1247,7 @@ table.diff-table .diff-thread-row td {
     max-height: calc(100vh - 16px);
     overflow: auto;
     font-size: 13px;
-    border: 1px solid #d1d5da;
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 8px;
 }
@@ -1160,7 +1257,7 @@ table.diff-table .diff-thread-row td {
     margin-bottom: 8px;
     padding: 4px 8px;
     font-size: 13px;
-    border: 1px solid #d1d5da;
+    border: 1px solid var(--border);
     border-radius: 6px;
 }
 
@@ -1180,7 +1277,7 @@ table.diff-table .diff-thread-row td {
 
 .tree-dir {
     cursor: pointer;
-    color: #586069;
+    color: var(--fg-muted);
     padding: 2px 4px;
     overflow-wrap: anywhere;
 }
@@ -1191,16 +1288,16 @@ table.diff-table .diff-thread-row td {
     gap: 6px;
     padding: 2px 6px;
     border-radius: 4px;
-    color: #24292e;
+    color: var(--fg);
 }
 
 .tree-file:hover {
-    background-color: #f6f8fa;
+    background-color: var(--bg-subtle);
     text-decoration: none;
 }
 
 .tree-file.active {
-    background-color: #ddf4ff;
+    background-color: var(--info-bg);
 }
 
 .tree-file-name {
@@ -1224,11 +1321,11 @@ table.diff-table .diff-thread-row td {
 }
 
 .tree-status-deleted {
-    background-color: #cf222e;
+    background-color: var(--danger-strong);
 }
 
 .tree-status-renamed {
-    background-color: #0969da;
+    background-color: var(--info-fg);
 }
 
 .file-tree li.filtered-out {
@@ -1244,4 +1341,27 @@ table.diff-table .diff-thread-row td {
         position: static;
         max-height: 40vh;
     }
+}
+
+/* Theme toggle (added by theme.js) */
+.theme-toggle {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 950;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background-color: var(--bg-subtle);
+    color: var(--fg-muted);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 2px 6px var(--shadow);
+}
+
+.theme-toggle:hover {
+    background-color: var(--bg-hover);
+    color: var(--fg);
 }

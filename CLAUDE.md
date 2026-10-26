@@ -43,6 +43,9 @@ claude-review is a lightweight companion for working on planning documents with 
 - **frontend/templates/**: Go HTML templates (viewer.html, directory.html, index.html, compare.html)
 - **frontend/static/**: CSS and JavaScript for the web UI
 - **viewer.js**: Handles text selection, comment creation/editing, SSE connection for live updates
+- **theme.js**: Loaded in every page's `<head>`; applies the saved theme (dark by default, light via
+  `data-theme="light"` on `<html>`, stored in localStorage) before first paint and adds the toggle button. All colors
+  in styles.css are CSS variables defined per theme at the top of the file
 - **compare.js**: Compare page: changed-file tree (filter, jump, active highlight), right-side selection to comment,
   inline threads, gap expansion, live reload
 
