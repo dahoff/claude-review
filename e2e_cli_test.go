@@ -889,3 +889,43 @@ func TestE2E_CLI_Address_General(t *testing.T) {
 		assert.NotContains(t, output, "# General")
 	})
 }
+
+// TestE2E_CLI_Address_FollowsEdits tests that threads move with their lines when the file is edited
+func TestE2E_CLI_Address_FollowsEdits(t *testing.T) {
+	env := setupE2E(t)
+	_, err := env.runCLI(t, "register", "--project", env.ProjectDir)
+	require.NoError(t, err)
+
+	path := filepath.Join(env.ProjectDir, "anchors.md")
+	require.NoError(t, os.WriteFile(path, []byte("# Plan\n\nKeep this.\n\nChange this.\n"), 0644))
+
+	for _, c := range []struct {
+		line int
+		text string
+	}{{3, "Keep this."}, {5, "Change this."}} {
+		resp := env.postJSON(t, "/api/comments", map[string]interface{}{
+			"project_directory": env.ProjectDir,
+			"file_path":         "anchors.md",
+			"line_start":        c.line,
+			"line_end":          c.line,
+			"selected_text":     c.text,
+			"comment_text":      "About " + c.text,
+		})
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		_ = resp.Body.Close()
+	}
+
+	// Two lines added above both comments, and the second comment's line rewritten
+	require.NoError(t, os.WriteFile(path, []byte("# Plan\n\nIntro.\n\nKeep this.\n\nChanged.\n"), 0644))
+
+	output, err := env.runCLI(t, "address", "--file", "anchors.md", "--project", env.ProjectDir)
+	require.NoError(t, err)
+	assert.Contains(t, output, "(lines 5-5)\n> Keep this.")
+	assert.Contains(t, output, "(lines 7-7, outdated")
+	assert.Contains(t, output, "> Change this.")
+
+	// Syncing again without further edits leaves the lines where they are
+	again, err := env.runCLI(t, "address", "--file", "anchors.md", "--project", env.ProjectDir)
+	require.NoError(t, err)
+	assert.Equal(t, output, again)
+}

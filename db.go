@@ -40,14 +40,15 @@ type Comment struct {
 	Author           string     `json:"author"`
 	ResolvedBy       *string    `json:"resolved_by,omitempty"`
 	ClaimedAt        *time.Time `json:"-"`
-	Claimed          bool       `json:"claimed,omitempty"` // Root only: the agent is processing this thread
+	Claimed          bool       `json:"claimed,omitempty"`  // Root only: the agent is processing this thread
+	Outdated         bool       `json:"outdated,omitempty"` // Root only: the commented lines changed since (see anchors.go)
 }
 
 // claimTTL bounds how long an agent claim on a thread lasts, so a thread whose
 // processing was abandoned becomes editable again.
 const claimTTL = 15 * time.Minute
 
-const commentColumns = "id, project_directory, file_path, line_start, line_end, selected_text, comment_text, created_at, resolved_at, root_id, author, resolved_by, claimed_at"
+const commentColumns = "id, project_directory, file_path, line_start, line_end, selected_text, comment_text, created_at, resolved_at, root_id, author, resolved_by, claimed_at, outdated"
 
 type rowScanner interface {
 	Scan(dest ...interface{}) error
@@ -58,7 +59,7 @@ func scanComment(row rowScanner) (Comment, error) {
 	err := row.Scan(
 		&c.ID, &c.ProjectDirectory, &c.FilePath, &c.LineStart, &c.LineEnd,
 		&c.SelectedText, &c.CommentText, &c.CreatedAt,
-		&c.ResolvedAt, &c.RootID, &c.Author, &c.ResolvedBy, &c.ClaimedAt,
+		&c.ResolvedAt, &c.RootID, &c.Author, &c.ResolvedBy, &c.ClaimedAt, &c.Outdated,
 	)
 	c.Claimed = c.ClaimedAt != nil && time.Since(*c.ClaimedAt) < claimTTL
 	return c, err
@@ -150,7 +151,15 @@ func initDB() error {
 		author TEXT CHECK(author IN ('user', 'agent')),
 		resolved_by TEXT,
 		claimed_at TIMESTAMP,
+		outdated INTEGER NOT NULL DEFAULT 0,
 		FOREIGN KEY (project_directory) REFERENCES projects(directory)
+	);
+
+	CREATE TABLE IF NOT EXISTS file_snapshots (
+		project_directory TEXT NOT NULL,
+		file_path TEXT NOT NULL,
+		content TEXT NOT NULL,
+		PRIMARY KEY (project_directory, file_path)
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_comments_lookup ON comments(project_directory, file_path, resolved_at, created_at DESC);
@@ -167,17 +176,23 @@ func initDB() error {
 
 // migrateDB adds columns introduced after a database was created.
 func migrateDB() error {
-	var count int
-	query := "SELECT COUNT(*) FROM pragma_table_info('comments') WHERE name = 'claimed_at'"
-	logQuery(query)
-	if err := db.QueryRow(query).Scan(&count); err != nil {
-		return fmt.Errorf("failed to inspect schema: %w", err)
+	columns := []struct{ name, definition string }{
+		{"claimed_at", "TIMESTAMP"},
+		{"outdated", "INTEGER NOT NULL DEFAULT 0"},
 	}
-	if count == 0 {
-		query = "ALTER TABLE comments ADD COLUMN claimed_at TIMESTAMP"
-		logQuery(query)
-		if _, err := db.Exec(query); err != nil {
-			return fmt.Errorf("failed to add claimed_at column: %w", err)
+	for _, column := range columns {
+		var count int
+		query := "SELECT COUNT(*) FROM pragma_table_info('comments') WHERE name = ?"
+		logQuery(query, column.name)
+		if err := db.QueryRow(query, column.name).Scan(&count); err != nil {
+			return fmt.Errorf("failed to inspect schema: %w", err)
+		}
+		if count == 0 {
+			query = fmt.Sprintf("ALTER TABLE comments ADD COLUMN %s %s", column.name, column.definition)
+			logQuery(query)
+			if _, err := db.Exec(query); err != nil {
+				return fmt.Errorf("failed to add %s column: %w", column.name, err)
+			}
 		}
 	}
 	return nil

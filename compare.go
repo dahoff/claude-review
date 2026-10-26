@@ -119,6 +119,9 @@ func handleCompare(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if err := syncProjectAnchors(projectDir); err != nil {
+		log.Printf("Failed to update comment lines: %v", err)
+	}
 	comments, err := getProjectComments(projectDir, false)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

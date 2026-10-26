@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -176,7 +177,11 @@ func renderViewer(w http.ResponseWriter, r *http.Request, projectDir, filePath s
 		return
 	}
 
-	// Get comments for this file
+	// Get comments for this file, on the lines they refer to now (the thread list
+	// shows every file's threads, so update them all)
+	if err := syncProjectAnchors(projectDir); err != nil {
+		log.Printf("Failed to update comment lines: %v", err)
+	}
 	comments, err := getComments(projectDir, filePath, false)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -196,14 +201,21 @@ func renderViewer(w http.ResponseWriter, r *http.Request, projectDir, filePath s
 	}
 	w.Header().Set("Content-Security-Policy", contentSecurityPolicy(nonce))
 
+	otherThreads, err := otherThreadSummaries(projectDir, filePath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	data := map[string]interface{}{
-		"ProjectDir":  projectDir,
-		"FilePath":    filePath,
-		"HTMLContent": template.HTML(html),
-		"Comments":    comments,
-		"Nonce":       nonce,
-		"IsGitRepo":   isGitRepo(projectDir),
-		"OpenThreads": openThreadCount(projectDir),
+		"ProjectDir":   projectDir,
+		"FilePath":     filePath,
+		"HTMLContent":  template.HTML(html),
+		"Comments":     comments,
+		"OtherThreads": otherThreads,
+		"Nonce":        nonce,
+		"IsGitRepo":    isGitRepo(projectDir),
+		"OpenThreads":  openThreadCount(projectDir),
 	}
 
 	if err := templates.ExecuteTemplate(w, "viewer.html", data); err != nil {
@@ -390,6 +402,16 @@ func handleCreateComment(w http.ResponseWriter, r *http.Request) {
 	// Default author to 'user' if not provided (for API calls from web UI)
 	if comment.Author == "" {
 		comment.Author = "user"
+	}
+
+	// The new comment's lines refer to the file as it is now: move the existing
+	// comments to the current content first
+	if comment.RootID == nil && comment.FilePath != "" {
+		if registered, err := isRegisteredProject(comment.ProjectDirectory); err == nil && registered {
+			if err := syncAnchors(comment.ProjectDirectory, comment.FilePath); err != nil {
+				log.Printf("Failed to update comment lines of %s: %v", comment.FilePath, err)
+			}
+		}
 	}
 
 	if err := createComment(&comment); err != nil {

@@ -168,6 +168,174 @@ body.viewer-page {
     body.viewer-page:has(#comment-panel.collapsed) {
         padding-right: 80px;
     }
+
+    body.viewer-page.thread-nav-open:has(#thread-nav:not([hidden])) {
+        padding-left: 300px;
+    }
+}
+
+/* Viewer thread list: every open thread of the project, on the left */
+#thread-nav {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+    width: 260px;
+    max-height: calc(100vh - 40px);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px var(--shadow);
+    font-size: 13px;
+}
+
+#thread-nav[hidden] {
+    display: none;
+}
+
+#thread-nav.collapsed {
+    width: auto;
+}
+
+#thread-nav.collapsed .thread-nav-list {
+    display: none;
+}
+
+.thread-nav-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-muted);
+    font-weight: 600;
+}
+
+.thread-nav-toggle {
+    border: none;
+    background: none;
+    color: var(--fg-muted);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0 2px;
+}
+
+.thread-nav-toggle:hover {
+    color: var(--fg);
+}
+
+.thread-nav-steps {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border-muted);
+}
+
+.thread-nav-steps button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.thread-nav-position {
+    color: var(--fg-muted);
+    font-size: 12px;
+}
+
+.thread-nav-list {
+    overflow-y: auto;
+    padding: 4px 0 8px;
+}
+
+.thread-nav-file {
+    padding: 8px 10px 2px;
+    overflow: hidden;
+    color: var(--fg-muted);
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.thread-nav-file.current-file {
+    color: var(--fg);
+    font-weight: 600;
+}
+
+.thread-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px 3px 14px;
+    border-left: 3px solid transparent;
+    color: var(--fg);
+}
+
+.thread-nav-item:hover {
+    background-color: var(--bg-hover);
+    text-decoration: none;
+}
+
+.thread-nav-item.current {
+    border-left-color: var(--accent);
+    background-color: var(--bg-subtle);
+}
+
+.thread-nav-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.thread-nav-dot.status-you {
+    background-color: var(--info-fg);
+}
+
+.thread-nav-dot.status-claude {
+    background-color: var(--agent);
+}
+
+.thread-nav-line {
+    flex: none;
+    color: var(--fg-muted);
+    font-size: 11px;
+}
+
+.thread-nav-snippet {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Narrow windows: the list stays collapsed, out of the text's way */
+@media (max-width: 1099px) {
+    #thread-nav {
+        top: auto;
+        bottom: 16px;
+        width: auto;
+    }
+
+    #thread-nav .thread-nav-list,
+    .thread-nav-toggle {
+        display: none;
+    }
+}
+
+/* Comments whose lines changed since they were written */
+.comment-highlight.outdated {
+    border-bottom-style: dashed;
+}
+
+.comment-outdated-badge {
+    padding: 0 6px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--fg-muted);
+    font-size: 10px;
+    font-weight: 500;
 }
 
 p {
@@ -887,7 +1055,7 @@ ul.contains-task-list li {
 
 /* Compare page */
 body.compare-page {
-    max-width: 1600px;
+    max-width: none;
 }
 
 .compare-controls {

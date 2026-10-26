@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,6 +21,9 @@ func handleThreads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := syncProjectAnchors(projectDir); err != nil {
+		log.Printf("Failed to update comment lines: %v", err)
+	}
 	open, err := getProjectComments(projectDir, false)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -63,6 +67,60 @@ func nonNil(comments []Comment) []Comment {
 		return []Comment{}
 	}
 	return comments
+}
+
+// threadSummary is one open thread in the viewer's thread list.
+type threadSummary struct {
+	ID        int    `json:"id"`
+	FilePath  string `json:"file_path"`
+	LineStart *int   `json:"line_start,omitempty"`
+	Status    string `json:"status"` // you (the agent wrote last) or claude
+	Claimed   bool   `json:"claimed,omitempty"`
+	Outdated  bool   `json:"outdated,omitempty"`
+	Snippet   string `json:"snippet"`
+}
+
+// maxSnippetLength bounds the comment text shown in the thread list.
+const maxSnippetLength = 80
+
+// otherThreadSummaries returns the open threads of a project outside one file. The
+// viewer builds that file's own entries from its comments, which it keeps current.
+func otherThreadSummaries(projectDir, filePath string) ([]threadSummary, error) {
+	comments, err := getProjectComments(projectDir, false)
+	if err != nil {
+		return nil, err
+	}
+	summaries := []threadSummary{}
+	for _, thread := range groupCommentsByThread(comments) {
+		root := thread[0]
+		if root.FilePath == filePath {
+			continue
+		}
+		status := "claude"
+		if thread[len(thread)-1].Author == "agent" {
+			status = "you"
+		}
+		summaries = append(summaries, threadSummary{
+			ID:        root.ID,
+			FilePath:  root.FilePath,
+			LineStart: root.LineStart,
+			Status:    status,
+			Claimed:   root.Claimed,
+			Outdated:  root.Outdated,
+			Snippet:   snippet(root.CommentText),
+		})
+	}
+	return summaries, nil
+}
+
+// snippet returns the start of a comment's first line.
+func snippet(text string) string {
+	line, _, _ := strings.Cut(strings.TrimSpace(text), "\n")
+	runes := []rune(line)
+	if len(runes) > maxSnippetLength {
+		return string(runes[:maxSnippetLength-1]) + "…"
+	}
+	return line
 }
 
 // openThreadCount returns the number of unresolved threads in a project, for the "Threads" links.

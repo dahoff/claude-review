@@ -38,6 +38,9 @@ claude-review is a lightweight companion for working on planning documents with 
 - **diff.go**: Changed-file listing, unified-diff parsing into split rows, and folding of unchanged context
 - **compare.go**: `/compare/<project>` handler; places comment threads on diff lines, under a file, or in "other files"; builds the
   GitHub-style file tree (folders first, single-child folders merged) that also orders the diff sections
+- **anchors.go**: Keeps comments on their lines as files change: `file_snapshots` holds the content a file's comments refer
+  to; `syncAnchors` diffs it against the file on disk and moves open threads (marking them `outdated` when their own
+  lines changed). Called lazily wherever comments are read or created (viewer, threads, compare, `address`)
 - **threads.go**: `/threads/<project>` handler (all open and resolved threads of a project), `/api/file-lines` (lines of a
   text file in a registered project, for the threads page's context) and `openThreadCount` for the breadcrumbs'
   Threads links
@@ -45,7 +48,9 @@ claude-review is a lightweight companion for working on planning documents with 
 ### Frontend
 - **frontend/templates/**: Go HTML templates (viewer.html, directory.html, index.html, compare.html, threads.html)
 - **frontend/static/**: CSS and JavaScript for the web UI
-- **viewer.js**: Handles text selection, comment creation/editing, SSE connection for live updates
+- **viewer.js**: Handles text selection, comment creation/editing, SSE connection for live updates, and the left-side
+  thread list (every open thread of the project, from `otherThreads` plus this file's live comments; Prev/Next and `n`/`p`
+  step through them across files)
 - **theme.js**: Loaded in every page's `<head>`; applies the saved theme (dark by default, light via
   `data-theme="light"` on `<html>`, stored in localStorage) before first paint and adds the toggle button. All colors
   in styles.css are CSS variables defined per theme at the top of the file
@@ -58,12 +63,14 @@ claude-review is a lightweight companion for working on planning documents with 
 ### Database Schema
 SQLite database stored at `~/.local/share/claude-review/comments.db`:
 - **projects**: Tracks registered project directories
+- **file_snapshots**: Per project file, the content its comments' line numbers refer to (see anchors.go)
 - **comments**: Stores inline comments with line ranges, selected text, resolved status, threading support
   - `file_path`: Project-relative file; empty for general comments (on the project, not a file; no lines or
     selection), which the threads and compare pages list under "General" and `address` prints under `# General`
   - `root_id`: Foreign key to parent comment (NULL for root comments, enables threaded discussions)
   - `author`: Name of comment author (user or agent name)
   - `resolved_by`: Name of who resolved the thread
+  - `outdated`: Set by `syncAnchors` when a root comment's lines changed since it was written; `address` and the pages flag it
   - `claimed_at`: Set on root comments by `address --claim` while the agent processes the thread, cleared by its reply; edits and deletes are refused (409) while a claim younger than `claimTTL` exists. Added to existing databases by `migrateDB`
 
 ### Custom Slash Commands

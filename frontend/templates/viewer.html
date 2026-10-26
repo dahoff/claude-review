@@ -24,6 +24,21 @@
 
         <div id="markdown-content">{{.HTMLContent}}</div>
 
+        <!-- Every open thread of the project, filled in by viewer.js -->
+        <nav id="thread-nav" aria-label="Open threads" hidden>
+            <div class="thread-nav-header">
+                <button type="button" class="thread-nav-toggle" title="Show or hide the thread list">☰</button>
+                <span class="thread-nav-title">Open threads</span>
+                <span class="comment-count thread-nav-count"></span>
+            </div>
+            <div class="thread-nav-steps">
+                <button type="button" class="comment-btn thread-nav-prev" title="Previous thread (p)">‹ Prev</button>
+                <span class="thread-nav-position"></span>
+                <button type="button" class="comment-btn thread-nav-next" title="Next thread (n)">Next ›</button>
+            </div>
+            <div class="thread-nav-list"></div>
+        </nav>
+
         <!-- Comment panel (created in HTML to avoid blink on load) -->
         <div id="comment-panel" class="expanded ready">
             <div class="comment-panel-header">
@@ -73,6 +88,8 @@
             // Template variables from Go backend
             const projectDir = {{.ProjectDir | json}};
             const filePath = {{.FilePath | json}};
+            const otherThreads = {{.OtherThreads | json}};
+            const isGitRepo = {{.IsGitRepo | json}};
             let comments = {{.Comments | json}};
         </script>
 

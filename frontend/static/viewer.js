@@ -7,6 +7,8 @@
     let commentButton = null;
     let commentPopup = null;
     let commentPanel = null;
+    // Root comment ID of the thread selected in the thread list
+    let currentThreadId = null;
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
@@ -20,7 +22,9 @@
         createCommentButton();
         createCommentPopup();
         createCommentPanel();
+        initThreadNav();
         loadExistingComments();
+        renderThreadNav();
         setupSSE();
     }
 
@@ -236,6 +240,7 @@
 
         // Show the panel now that it's populated
         commentPanel.classList.add('ready');
+        renderThreadNav();
     }
 
     function createCommentPanelItem(comment, isRoot, replyCount, isAwaitingResponse, editState) {
@@ -277,6 +282,14 @@
         }
 
         // Add badges to author row for root comments
+        if (isRoot && comment.outdated) {
+            const outdated = document.createElement('span');
+            outdated.className = 'comment-outdated-badge';
+            outdated.textContent = 'Outdated';
+            outdated.title = 'The commented lines changed since this comment; the quote shows the original text';
+            badgesDiv.appendChild(outdated);
+        }
+
         if (isRoot) {
             // Add status dot for awaiting response
             if (isAwaitingResponse) {
@@ -340,14 +353,7 @@
                 // Don't scroll if clicking on badge buttons
                 if (e.target.closest('.comment-badge-btn')) return;
 
-                const highlight = document.querySelector(`.comment-highlight[data-comment-id="${comment.id}"]`);
-                if (highlight) {
-                    highlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    highlight.style.backgroundColor = 'var(--highlight-hover)';
-                    setTimeout(() => {
-                        highlight.style.backgroundColor = '';
-                    }, 1000);
-                }
+                focusThread(comment.id);
             });
         }
 
@@ -971,13 +977,174 @@
     function scrollToLinkedComment() {
         const match = window.location.hash.match(/^#comment-(\d+)$/);
         if (!match) return;
-        const highlight = document.querySelector(`.comment-highlight[data-comment-id="${match[1]}"]`);
+        focusThread(Number(match[1]));
+    }
+
+    /**
+     * Scroll to a thread of this file, flash its highlight and make it the thread list's current one
+     */
+    function focusThread(id) {
+        currentThreadId = id;
+        history.replaceState(null, '', `#comment-${id}`);
+        renderThreadNav();
+        const highlight = document.querySelector(`.comment-highlight[data-comment-id="${id}"]`);
         if (!highlight) return;
         highlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
         highlight.style.backgroundColor = 'var(--highlight-hover)';
         setTimeout(() => {
             highlight.style.backgroundColor = '';
         }, 1500);
+    }
+
+    // Thread list: every open thread of the project, to step through them across files
+
+    function initThreadNav() {
+        const nav = document.getElementById('thread-nav');
+        if (!nav) return;
+        let collapsed = false;
+        try {
+            collapsed = localStorage.getItem('claude-review-thread-nav') === 'collapsed';
+        } catch (e) {
+            // Storage unavailable: keep the default
+        }
+        nav.classList.toggle('collapsed', collapsed);
+        document.body.classList.toggle('thread-nav-open', !collapsed);
+
+        nav.querySelector('.thread-nav-toggle').addEventListener('click', () => {
+            const nowCollapsed = nav.classList.toggle('collapsed');
+            document.body.classList.toggle('thread-nav-open', !nowCollapsed);
+            try {
+                localStorage.setItem('claude-review-thread-nav', nowCollapsed ? 'collapsed' : 'expanded');
+            } catch (e) {
+                // Storage unavailable: the choice lasts for this page only
+            }
+        });
+        nav.querySelector('.thread-nav-prev').addEventListener('click', () => stepThread(-1));
+        nav.querySelector('.thread-nav-next').addEventListener('click', () => stepThread(1));
+
+        document.addEventListener('keydown', (e) => {
+            if (e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return;
+            if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable]')) return;
+            if (e.key === 'n') stepThread(1);
+            if (e.key === 'p') stepThread(-1);
+        });
+    }
+
+    // navThreads returns the project's open threads in the threads page's order: general
+    // comments first, then by file and line. This file's come from its live comments.
+    function navThreads() {
+        const own = groupCommentsByThread().map((thread) => {
+            const last = thread.replies.length ? thread.replies[thread.replies.length - 1] : thread.root;
+            return {
+                id: thread.root.id,
+                file_path: filePath,
+                line_start: thread.root.line_start,
+                status: last.author === 'agent' ? 'you' : 'claude',
+                claimed: thread.root.claimed,
+                outdated: thread.root.outdated,
+                snippet: (thread.root.comment_text || '').trim().split('\n')[0],
+            };
+        });
+        return [...(otherThreads || []), ...own].sort(
+            (a, b) =>
+                (a.file_path < b.file_path ? -1 : a.file_path > b.file_path ? 1 : 0) ||
+                (a.line_start || 0) - (b.line_start || 0),
+        );
+    }
+
+    function threadHref(thread) {
+        const encode = (path) => path.split('/').map(encodeURIComponent).join('/');
+        if (thread.file_path.toLowerCase().endsWith('.md')) {
+            return `/projects${encode(projectDir)}/${encode(thread.file_path)}#comment-${thread.id}`;
+        }
+        // General comments and other files' threads are shown on the compare page
+        return isGitRepo ? `/compare${encode(projectDir)}#comment-${thread.id}` : `/threads${encode(projectDir)}`;
+    }
+
+    function goToThread(thread) {
+        if (thread.file_path === filePath) {
+            focusThread(thread.id);
+        } else {
+            window.location.href = threadHref(thread);
+        }
+    }
+
+    function stepThread(direction) {
+        const threads = navThreads();
+        if (threads.length === 0) return;
+        let index = threads.findIndex((t) => t.id === currentThreadId);
+        if (index === -1) {
+            // Nothing selected yet: start from this file's threads
+            const first = threads.findIndex((t) => t.file_path === filePath);
+            index = first === -1 ? (direction > 0 ? -1 : threads.length) : first - (direction > 0 ? 1 : 0);
+        }
+        const next = threads[index + direction];
+        if (next) goToThread(next);
+    }
+
+    function renderThreadNav() {
+        const nav = document.getElementById('thread-nav');
+        if (!nav) return;
+        const threads = navThreads();
+        nav.hidden = threads.length === 0;
+        if (threads.length === 0) return;
+
+        const index = threads.findIndex((t) => t.id === currentThreadId);
+        nav.querySelector('.thread-nav-count').textContent = threads.length;
+        nav.querySelector('.thread-nav-position').textContent =
+            index === -1 ? `${threads.length} open` : `${index + 1} of ${threads.length}`;
+        nav.querySelector('.thread-nav-prev').disabled = index === 0;
+        nav.querySelector('.thread-nav-next').disabled = index === threads.length - 1;
+
+        const list = nav.querySelector('.thread-nav-list');
+        list.replaceChildren();
+        let lastFile = null;
+        for (const thread of threads) {
+            if (thread.file_path !== lastFile) {
+                lastFile = thread.file_path;
+                const heading = document.createElement('div');
+                heading.className = 'thread-nav-file';
+                if (thread.file_path === filePath) heading.classList.add('current-file');
+                heading.textContent = thread.file_path || 'General';
+                heading.title = thread.file_path || 'Comments on the project, not on a single file';
+                list.appendChild(heading);
+            }
+
+            const item = document.createElement('a');
+            item.className = 'thread-nav-item';
+            item.href = threadHref(thread);
+            if (thread.id === currentThreadId) item.classList.add('current');
+            item.addEventListener('click', (e) => {
+                if (thread.file_path !== filePath) return;
+                e.preventDefault();
+                focusThread(thread.id);
+            });
+
+            const dot = document.createElement('span');
+            dot.className = `thread-nav-dot status-${thread.status}`;
+            dot.title =
+                thread.status === 'you'
+                    ? 'Waiting on you'
+                    : thread.claimed
+                      ? 'Claude is working on it'
+                      : 'Waiting on Claude';
+            item.appendChild(dot);
+            if (thread.line_start) {
+                const line = document.createElement('span');
+                line.className = 'thread-nav-line';
+                line.textContent = `L${thread.line_start}`;
+                if (thread.outdated) line.title = 'Outdated: the commented lines changed';
+                item.appendChild(line);
+            }
+            const text = document.createElement('span');
+            text.className = 'thread-nav-snippet';
+            text.textContent = thread.snippet;
+            item.appendChild(text);
+            list.appendChild(item);
+        }
+
+        const current = list.querySelector('.thread-nav-item.current');
+        if (current) current.scrollIntoView({ block: 'nearest' });
     }
 
     /**
@@ -1029,6 +1196,21 @@
                     return;
                 }
             }
+        }
+
+        // The text was edited away (or moved): mark the innermost block at the comment's line instead
+        const line = comment.line_start;
+        const block =
+            relevantBlocks
+                .filter((el) => parseInt(el.dataset.lineStart, 10) <= line && parseInt(el.dataset.lineEnd, 10) >= line)
+                .pop() || relevantBlocks[0];
+        if (block) {
+            const range = document.createRange();
+            range.selectNodeContents(block);
+            highlightComment(range, comment);
+            const highlight = block.querySelector(`.comment-highlight[data-comment-id="${comment.id}"]`);
+            if (highlight) highlight.classList.add('outdated');
+            return;
         }
 
         console.warn('Could not find text to highlight:', text);

@@ -155,7 +155,12 @@
             resolved: 'Resolved',
         }[thread.status];
         const where = document.createElement('span');
-        where.textContent = [lineLabel(root), metaLabel(thread)].filter(Boolean).join(' · ');
+        where.textContent = [lineLabel(root), root.outdated ? 'outdated' : '', metaLabel(thread)]
+            .filter(Boolean)
+            .join(' · ');
+        if (root.outdated) {
+            where.title = 'The commented lines changed since this comment; the quote shows the original text';
+        }
         header.append(chip, where);
         const url = threadURL(thread);
         if (url) {

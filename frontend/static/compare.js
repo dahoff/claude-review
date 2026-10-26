@@ -385,7 +385,8 @@
             const where = root.line_start
                 ? `Line ${root.line_start}${root.line_end !== root.line_start ? `–${root.line_end}` : ''}: `
                 : '';
-            quote.textContent = `${where}"${root.selected_text}"`;
+            const outdated = root.outdated ? ' (outdated: these lines changed since)' : '';
+            quote.textContent = `${where}"${root.selected_text}"${outdated}`;
             container.appendChild(quote);
         }
 

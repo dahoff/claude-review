@@ -156,7 +156,13 @@ func runServer() {
 	if err != nil {
 		log.Fatalf("Failed to create static sub-filesystem: %v", err)
 	}
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.FS(staticSubFS))))
+	// Embedded files carry no modification time, so make browsers revalidate them: after an
+	// upgrade they would otherwise keep using the previous version's scripts and styles
+	staticHandler := http.StripPrefix("/static/", http.FileServer(http.FS(staticSubFS)))
+	r.Handle("/static/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		staticHandler.ServeHTTP(w, r)
+	}))
 
 	// Start server
 	if !*daemonChild {
@@ -284,11 +290,19 @@ func runAddress() {
 		os.Exit(1)
 	}
 
-	// Get unresolved comments, for one file or the whole project
+	// Get unresolved comments, for one file or the whole project, on the lines they refer to now
 	var comments []Comment
 	scope := relPath
 	if relPath == "" {
 		scope = projectDir
+		err = syncProjectAnchors(projectDir)
+	} else {
+		err = syncAnchors(projectDir, relPath)
+	}
+	if err != nil {
+		log.Printf("Failed to update comment lines: %v", err)
+	}
+	if relPath == "" {
 		comments, err = getProjectComments(projectDir, false)
 	} else {
 		comments, err = getComments(projectDir, relPath, false)
@@ -390,6 +404,12 @@ func printThreads(threads [][]Comment) {
 		lineRange := ""
 		if rootComment.LineStart != nil && rootComment.LineEnd != nil {
 			lineRange = fmt.Sprintf(" (lines %d-%d)", *rootComment.LineStart, *rootComment.LineEnd)
+			if rootComment.Outdated {
+				lineRange = fmt.Sprintf(
+					" (lines %d-%d, outdated: these lines changed since the comment; the quote shows the original)",
+					*rootComment.LineStart, *rootComment.LineEnd,
+				)
+			}
 		}
 		fmt.Printf("## Comment #%d%s\n", rootComment.ID, lineRange)
 
