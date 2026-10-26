@@ -261,7 +261,9 @@ func (env *TestEnv) runCLIInDir(t *testing.T, dir string, args ...string) (strin
 func runGit(t *testing.T, dir string, args ...string) {
 	t.Helper()
 
-	cmd := exec.Command("git", append([]string{"-c", "user.name=test", "-c", "user.email=test@example.com"}, args...)...)
+	cmd := exec.Command(
+		"git",
+		append([]string{"-c", "user.name=test", "-c", "user.email=test@example.com"}, args...)...)
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(output))

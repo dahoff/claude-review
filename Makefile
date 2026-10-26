@@ -1,4 +1,4 @@
-.PHONY: lint test test-verbose test-one test-ci air build build-release dev release release-patch release-minor release-major install-slash-commands install-hooks install
+.PHONY: lint test test-verbose test-one test-ci air build build-release dev release release-patch release-minor release-major install-slash-commands install-hooks install docker-image
 
 .EXPORT_ALL_VARIABLES:
 
@@ -9,6 +9,8 @@ CR_VERSION ?= dev
 
 CR_LISTEN_PORT ?= 4778
 CR_DATA_DIR ?= dev_data_dir
+
+DOCKER_IMAGE ?= claude-review-dev
 
 
 prettier:
@@ -64,3 +66,14 @@ release-major:
 
 install: build
 	./${CR_BUILD_ARTIFACTS_DIR}/${CR_EXECUTABLE_FILENAME} install
+
+docker-image:
+	docker build -f Dockerfile.dev -t ${DOCKER_IMAGE} .
+
+# Run any target inside the dev container, e.g. make docker-test, make docker-lint, make docker-build.
+# Runs as the host user so outputs are not root-owned; caches live in .cache/ (skipped by ./...) to persist between runs.
+docker-%: docker-image
+	docker run --rm -u $$(id -u):$$(id -g) -v "$$PWD":/src -w /src \
+		-e HOME=/src/.cache/home -e GOCACHE=/src/.cache/go-build -e GOMODCACHE=/src/.cache/go-mod -e GOFLAGS=-modcacherw \
+		-e GOLANGCI_LINT_CACHE=/src/.cache/golangci-lint \
+		${DOCKER_IMAGE} make $*

@@ -261,7 +261,11 @@ func runAddress() {
 	projectFlag := addressCmd.String("project", "", "Project directory")
 	filePath := addressCmd.String("file", "", "File path (defaults to all files in the project)")
 	pending := addressCmd.Bool("pending", false, "Only show threads awaiting an agent response")
-	claim := addressCmd.Bool("claim", false, "Lock the listed threads against editing in the browser until the agent replies")
+	claim := addressCmd.Bool(
+		"claim",
+		false,
+		"Lock the listed threads against editing in the browser until the agent replies",
+	)
 
 	if err := addressCmd.Parse(os.Args[2:]); err != nil {
 		log.Fatalf("Failed to parse flags: %v", err)

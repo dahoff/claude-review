@@ -86,6 +86,13 @@ make lint               # Run prettier and golangci-lint with auto-fix
 make prettier           # Format frontend files only
 ```
 
+### Without a local toolchain (Docker)
+```bash
+make docker-test        # Any target as docker-<target>: runs `make <target>` in the Dockerfile.dev image
+make docker-lint        # (Go, gotestsum, golangci-lint, prettier) as the host user; caches in .cache/
+make docker-build
+```
+
 ### Installation
 ```bash
 make install            # Build binary and install slash commands to ~/.claude/commands/

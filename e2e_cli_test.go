@@ -688,7 +688,7 @@ func TestE2E_CLI_Uninstall(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(dataDir, "comments.db"), []byte("db"), 0644))
 
 		cmd := exec.Command(binaryPath, "install")
-		cmd.Env = append(os.Environ(), "HOME="+home, "GOCOVERDIR=tmp/coverage")
+		cmd.Env = append(os.Environ(), "HOME="+home, "GOCOVERDIR=tmp/coverage", "CR_DATA_DIR=")
 		output, err := cmd.CombinedOutput()
 		require.NoError(t, err, "Install failed: %s", string(output))
 		return home, binPath, dataDir
@@ -698,7 +698,7 @@ func TestE2E_CLI_Uninstall(t *testing.T) {
 		home, binPath, dataDir := setupInstalledHome(t, "home-binary")
 
 		cmd := exec.Command(binaryPath, "uninstall")
-		cmd.Env = append(os.Environ(), "HOME="+home, "GOCOVERDIR=tmp/coverage")
+		cmd.Env = append(os.Environ(), "HOME="+home, "GOCOVERDIR=tmp/coverage", "CR_DATA_DIR=")
 		output, err := cmd.CombinedOutput()
 		require.NoError(t, err, string(output))
 
@@ -716,7 +716,7 @@ func TestE2E_CLI_Uninstall(t *testing.T) {
 		home, binPath, dataDir := setupInstalledHome(t, "home-purge")
 
 		cmd := exec.Command(binaryPath, "uninstall", "--purge")
-		cmd.Env = append(os.Environ(), "HOME="+home, "GOCOVERDIR=tmp/coverage")
+		cmd.Env = append(os.Environ(), "HOME="+home, "GOCOVERDIR=tmp/coverage", "CR_DATA_DIR=")
 		output, err := cmd.CombinedOutput()
 		require.NoError(t, err, string(output))
 

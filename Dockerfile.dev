@@ -1,0 +1,24 @@
+# Build, test and lint environment, so a Go/Node toolchain isn't needed on the host.
+# Used by the docker-* Makefile targets, which mount the checkout at /src.
+FROM golang:1.25-bookworm
+
+ARG GOLANGCI_LINT_VERSION=v2.5.0
+ARG GOTESTSUM_VERSION=v1.13.0
+ARG PRETTIER_VERSION=3.6.2
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git nodejs npm \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g prettier@${PRETTIER_VERSION} \
+    && GOBIN=/usr/local/bin go install gotest.tools/gotestsum@${GOTESTSUM_VERSION} \
+    && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+        | sh -s -- -b /usr/local/bin ${GOLANGCI_LINT_VERSION} \
+    && rm -rf /root/.cache /go/pkg
+
+# The container runs as the host user, whose HOME is not in the image
+RUN git config --system user.name claude-review \
+    && git config --system user.email claude-review@localhost \
+    && git config --system --add safe.directory '*'
+
+WORKDIR /src
