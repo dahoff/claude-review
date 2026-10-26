@@ -304,6 +304,13 @@ body.viewer-page {
     font-size: 11px;
 }
 
+.thread-nav-empty {
+    margin: 0;
+    padding: 8px 10px 0;
+    color: var(--fg-muted);
+    font-size: 12px;
+}
+
 .thread-nav-snippet {
     overflow: hidden;
     text-overflow: ellipsis;

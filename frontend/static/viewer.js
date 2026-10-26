@@ -1086,18 +1086,27 @@
         const nav = document.getElementById('thread-nav');
         if (!nav) return;
         const threads = navThreads();
-        nav.hidden = threads.length === 0;
-        if (threads.length === 0) return;
-
+        // Shown even when empty, so it is clear there is nothing to step through
+        nav.hidden = false;
+        const empty = threads.length === 0;
         const index = threads.findIndex((t) => t.id === currentThreadId);
         nav.querySelector('.thread-nav-count').textContent = threads.length;
-        nav.querySelector('.thread-nav-position').textContent =
-            index === -1 ? `${threads.length} open` : `${index + 1} of ${threads.length}`;
-        nav.querySelector('.thread-nav-prev').disabled = index === 0;
-        nav.querySelector('.thread-nav-next').disabled = index === threads.length - 1;
+        nav.querySelector('.thread-nav-position').textContent = empty
+            ? 'none open'
+            : index === -1
+              ? `${threads.length} open`
+              : `${index + 1} of ${threads.length}`;
+        nav.querySelector('.thread-nav-prev').disabled = empty || index === 0;
+        nav.querySelector('.thread-nav-next').disabled = empty || index === threads.length - 1;
 
         const list = nav.querySelector('.thread-nav-list');
         list.replaceChildren();
+        if (empty) {
+            const note = document.createElement('p');
+            note.className = 'thread-nav-empty';
+            note.textContent = 'No open threads in this project. Select text to comment.';
+            list.appendChild(note);
+        }
         let lastFile = null;
         for (const thread of threads) {
             if (thread.file_path !== lastFile) {
