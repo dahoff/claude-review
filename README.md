@@ -70,7 +70,9 @@ bottom of the page.
 
 ### From source (recommended)
 
-Requires [Go](https://go.dev/doc/install) and a C compiler (CGO is used for SQLite).
+Requires [Go](https://go.dev/doc/install) and a C compiler (CGO is used for SQLite). On Linux without Go, the
+installer builds in a Docker container instead (`./install.sh --docker` forces this); the installed binary then needs
+only glibc 2.34+ and git, not Go or Docker.
 
 ```bash
 git clone https://github.com/dahoff/claude-review.git
