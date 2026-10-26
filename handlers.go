@@ -354,14 +354,16 @@ func handleCreateComment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "project_directory is required", http.StatusBadRequest)
 		return
 	}
-	if comment.FilePath == "" {
-		http.Error(w, "file_path is required", http.StatusBadRequest)
-		return
-	}
 
-	// For root comments, line numbers and selected text are required
-	// For replies (root_id is set), they are optional
-	if comment.RootID == nil {
+	// A root comment without file_path is a general comment on the project: it has no
+	// lines or selection. Root comments on a file need line numbers and selected text;
+	// replies (root_id is set) need neither.
+	if comment.RootID == nil && comment.FilePath == "" {
+		if comment.LineStart != nil || comment.LineEnd != nil || comment.SelectedText != "" {
+			http.Error(w, "general comments (no file_path) cannot have lines or selected_text", http.StatusBadRequest)
+			return
+		}
+	} else if comment.RootID == nil {
 		if comment.LineStart == nil || *comment.LineStart <= 0 {
 			http.Error(w, "line_start must be positive", http.StatusBadRequest)
 			return

@@ -59,6 +59,8 @@ claude-review is a lightweight companion for working on planning documents with 
 SQLite database stored at `~/.local/share/claude-review/comments.db`:
 - **projects**: Tracks registered project directories
 - **comments**: Stores inline comments with line ranges, selected text, resolved status, threading support
+  - `file_path`: Project-relative file; empty for general comments (on the project, not a file; no lines or
+    selection), which the threads and compare pages list under "General" and `address` prints under `# General`
   - `root_id`: Foreign key to parent comment (NULL for root comments, enables threaded discussions)
   - `author`: Name of comment author (user or agent name)
   - `resolved_by`: Name of who resolved the thread

@@ -100,6 +100,9 @@
             {{end}}
 
             <a class="compare-refresh" href="">Refresh</a>
+            <button type="button" class="comment-btn general-comment-add" id="general-comment-add">
+                + General comment
+            </button>
         </div>
 
         {{with $c.Notice}}
@@ -113,6 +116,12 @@
             </nav>
             {{end}}
             <div class="compare-files">
+                <section id="general-comments" hidden>
+                    <h2>General comments</h2>
+                    <div class="general-comments-list"></div>
+                    <div class="general-comment-new"></div>
+                </section>
+
                 {{if .Files}}
                 <p class="compare-summary">
                     {{len .Files}} file{{if ne (len .Files) 1}}s{{end}} changed,

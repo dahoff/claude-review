@@ -33,6 +33,7 @@
         document.querySelectorAll('.thread-filter').forEach((button) => {
             button.addEventListener('click', () => setFilter(button.dataset.filter));
         });
+        document.getElementById('general-comment-add').addEventListener('click', showGeneralCommentForm);
         render();
         setupSSE();
     }
@@ -123,10 +124,11 @@
 
         const header = document.createElement('h2');
         header.className = 'thread-file-header';
-        const link = document.createElement('a');
+        // General comments (no file) are listed first, under their own heading
+        const link = document.createElement(file ? 'a' : 'span');
         link.className = 'thread-file-path';
-        link.href = fileURL(file);
-        link.textContent = file;
+        if (file) link.href = fileURL(file);
+        link.textContent = file || 'General';
         const count = document.createElement('span');
         count.className = 'thread-file-count';
         count.textContent = `${threads.length} thread${threads.length === 1 ? '' : 's'}`;
@@ -154,11 +156,15 @@
         }[thread.status];
         const where = document.createElement('span');
         where.textContent = [lineLabel(root), metaLabel(thread)].filter(Boolean).join(' · ');
-        const open = document.createElement('a');
-        open.className = 'thread-open-link';
-        open.href = threadURL(thread);
-        open.textContent = 'Open in file →';
-        header.append(chip, where, open);
+        header.append(chip, where);
+        const url = threadURL(thread);
+        if (url) {
+            const open = document.createElement('a');
+            open.className = 'thread-open-link';
+            open.href = url;
+            open.textContent = root.file_path ? 'Open in file →' : 'Open in changes →';
+            header.appendChild(open);
+        }
         card.appendChild(header);
 
         if (root.selected_text) {
@@ -240,9 +246,15 @@
     }
 
     // threadURL opens the thread where it is shown: in the Markdown viewer, on the compare page
-    // for other files, or at the file itself when neither shows it.
+    // for other files and general comments, or at the file itself when neither shows it.
+    // General comments have no URL when the compare page does not show them.
     function threadURL(thread) {
         const file = thread.root.file_path;
+        if (!file) {
+            return isGitRepo && thread.status !== 'resolved'
+                ? `/compare${encodePath(projectDir)}#comment-${thread.root.id}`
+                : '';
+        }
         if (thread.status === 'resolved') {
             return fileURL(file);
         }
@@ -383,17 +395,42 @@
     // Actions
 
     function showReplyForm(card, root) {
-        const existing = card.querySelector('.diff-thread-form');
+        const form = showForm(card, 'Reply…', 'Reply', (text) => ({
+            project_directory: projectDir,
+            file_path: root.file_path,
+            comment_text: text,
+            root_id: root.id,
+            author: 'user',
+        }));
+        if (form) card.querySelector('.thread-card-actions').before(form);
+    }
+
+    // A general comment is about the project rather than one file, e.g. a file that should have changed
+    function showGeneralCommentForm() {
+        const holder = document.getElementById('general-comment-new');
+        const form = showForm(
+            holder,
+            'A comment on the project, not on a single file (e.g. "You should also have updated README.md")',
+            'Comment',
+            (text) => ({ project_directory: projectDir, file_path: '', comment_text: text, author: 'user' }),
+        );
+        if (form) holder.appendChild(form);
+    }
+
+    // showForm returns a new comment form for the caller to place in container, or null when
+    // container already has one (which is focused instead). body builds the API request.
+    function showForm(container, placeholder, submitLabel, body) {
+        const existing = container.querySelector('.diff-thread-form');
         if (existing) {
             existing.querySelector('textarea').focus();
-            return;
+            return null;
         }
 
         const form = document.createElement('form');
         form.className = 'diff-thread-form';
         const textarea = document.createElement('textarea');
         textarea.rows = 3;
-        textarea.placeholder = 'Reply…';
+        textarea.placeholder = placeholder;
         const buttons = document.createElement('div');
         buttons.className = 'comment-popup-buttons';
         const cancel = document.createElement('button');
@@ -403,7 +440,7 @@
         const submit = document.createElement('button');
         submit.type = 'submit';
         submit.className = 'comment-btn comment-btn-primary';
-        submit.textContent = 'Reply';
+        submit.textContent = submitLabel;
         buttons.append(cancel, submit);
         form.append(textarea, buttons);
 
@@ -417,19 +454,16 @@
             const text = textarea.value.trim();
             if (!text) return;
             submit.disabled = true;
-            const saved = await mutate(() =>
-                api('POST', '/api/comments', {
-                    project_directory: projectDir,
-                    file_path: root.file_path,
-                    comment_text: text,
-                    root_id: root.id,
-                    author: 'user',
-                }),
-            );
+            const saved = await mutate(() => api('POST', '/api/comments', body(text)));
             if (saved) {
                 openComments.push(saved);
                 form.remove();
-                render();
+                // Show the saved comment, which the "you" and "resolved" filters would hide
+                if (filter === 'you' || filter === 'resolved') {
+                    setFilter('open');
+                } else {
+                    render();
+                }
                 reloadIfPending();
             } else {
                 submit.disabled = false;
@@ -443,8 +477,9 @@
             }
         });
 
-        card.querySelector('.thread-card-actions').before(form);
-        textarea.focus();
+        // Focus once the caller has placed the form
+        setTimeout(() => textarea.focus());
+        return form;
     }
 
     async function resolveThread(thread) {

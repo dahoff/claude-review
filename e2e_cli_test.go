@@ -812,3 +812,80 @@ func TestE2E_CLI_Address_Project(t *testing.T) {
 		assert.Regexp(t, `test\.md\s*</a>\s*<span class="entry-comment-count"[^>]*>1</span>`, string(body))
 	})
 }
+
+// TestE2E_CLI_Address_General tests general comments: on the project, not on a file
+func TestE2E_CLI_Address_General(t *testing.T) {
+	env := setupE2E(t)
+	_, err := env.runCLI(t, "register", "--project", env.ProjectDir)
+	require.NoError(t, err)
+
+	t.Run("general comments cannot have lines or a selection", func(t *testing.T) {
+		resp := env.postJSON(t, "/api/comments", map[string]interface{}{
+			"project_directory": env.ProjectDir,
+			"line_start":        1,
+			"line_end":          1,
+			"comment_text":      "Misplaced",
+		})
+		defer func() { _ = resp.Body.Close() }()
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	resp := env.postJSON(t, "/api/comments", map[string]interface{}{
+		"project_directory": env.ProjectDir,
+		"comment_text":      "You should also have updated README.md",
+	})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	var general struct {
+		ID       int    `json:"id"`
+		FilePath string `json:"file_path"`
+		Author   string `json:"author"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&general))
+	_ = resp.Body.Close()
+	assert.Equal(t, "", general.FilePath)
+	assert.Equal(t, "user", general.Author)
+
+	resp = env.postJSON(t, "/api/comments", map[string]interface{}{
+		"project_directory": env.ProjectDir,
+		"file_path":         "test.md",
+		"line_start":        1,
+		"line_end":          1,
+		"selected_text":     "Test",
+		"comment_text":      "Comment on test",
+	})
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	_ = resp.Body.Close()
+
+	t.Run("address lists general comments first, under their own header", func(t *testing.T) {
+		output, err := env.runCLI(t, "address", "--pending", "--project", env.ProjectDir)
+		require.NoError(t, err)
+		assert.Contains(t, output, "Found 2 unresolved comment(s) in 1 file(s)")
+		assert.Contains(t, output, "- (general) (1)")
+		assert.Contains(t, output, "You should also have updated README.md")
+		general := strings.Index(output, "# General")
+		file := strings.Index(output, "# File: "+filepath.Join(env.ProjectDir, "test.md"))
+		require.NotEqual(t, -1, general)
+		assert.Less(t, general, file)
+	})
+
+	t.Run("address for one file leaves general comments out", func(t *testing.T) {
+		output, err := env.runCLI(t, "address", "--file", "test.md", "--project", env.ProjectDir)
+		require.NoError(t, err)
+		assert.NotContains(t, output, "README.md")
+	})
+
+	t.Run("the agent replies to and resolves general threads", func(t *testing.T) {
+		id := fmt.Sprintf("%d", general.ID)
+		_, err := env.runCLI(t, "reply", "--comment-id", id, "--message", "Updated README.md")
+		require.NoError(t, err)
+		output, err := env.runCLI(t, "address", "--pending", "--project", env.ProjectDir)
+		require.NoError(t, err)
+		assert.NotContains(t, output, "# General")
+
+		_, err = env.runCLI(t, "resolve", "--comment-id", id)
+		require.NoError(t, err)
+		output, err = env.runCLI(t, "address", "--project", env.ProjectDir)
+		require.NoError(t, err)
+		assert.NotContains(t, output, "# General")
+	})
+}

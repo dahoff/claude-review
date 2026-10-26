@@ -20,6 +20,7 @@
         document.body.classList.add('js');
         initControls();
         initFileTree();
+        document.getElementById('general-comment-add').addEventListener('click', showGeneralCommentForm);
         if (!readOnly) {
             initSelection();
         }
@@ -263,6 +264,24 @@
         });
     }
 
+    // A general comment is about the project rather than one file, e.g. a file that should have changed
+    function showGeneralCommentForm() {
+        const section = document.getElementById('general-comments');
+        const holder = section.querySelector('.general-comment-new');
+        section.hidden = false;
+        section.scrollIntoView({ block: 'nearest' });
+        showForm(holder, '', 'Comment', async (text) => {
+            const saved = await api('POST', '/api/comments', {
+                project_directory: projectDir,
+                file_path: '',
+                comment_text: text,
+            });
+            comments.push(saved);
+        });
+        holder.querySelector('textarea').placeholder =
+            'A comment on the project, not on a single file (e.g. "You should also have updated README.md")';
+    }
+
     // Threads
 
     function renderThreads() {
@@ -271,9 +290,16 @@
         const otherSection = document.getElementById('other-comments');
         const otherList = otherSection.querySelector('.other-comments-list');
         otherList.replaceChildren();
+        const generalSection = document.getElementById('general-comments');
+        const generalList = generalSection.querySelector('.general-comments-list');
+        generalList.replaceChildren();
 
         const otherByFile = new Map();
         for (const thread of groupThreads()) {
+            if (!thread.root.file_path) {
+                generalList.appendChild(createThread(thread, false));
+                continue;
+            }
             const placement = placements[thread.root.id] || { file: thread.root.file_path, where: 'other' };
             const section = sectionFor(placement.file);
 
@@ -303,6 +329,8 @@
             threads.forEach((thread) => otherList.appendChild(createThread(thread, true)));
         }
         otherSection.hidden = otherByFile.size === 0;
+        generalSection.hidden =
+            !generalList.hasChildNodes() && !generalSection.querySelector('.general-comment-new').hasChildNodes();
     }
 
     function sectionFor(filePath) {
@@ -351,7 +379,7 @@
         container.className = 'diff-thread';
         container.dataset.rootId = root.id;
 
-        if (showQuote) {
+        if (showQuote && root.selected_text) {
             const quote = document.createElement('div');
             quote.className = 'thread-item-text';
             const where = root.line_start

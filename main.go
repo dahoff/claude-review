@@ -335,15 +335,32 @@ func runAddress() {
 		threadsByFile[file] = append(threadsByFile[file], thread)
 	}
 
-	fmt.Printf("Found %d unresolved comment(s) in %d file(s) of %s:\n", len(threads), len(files), projectDir)
+	fileCount := len(files)
+	if _, general := threadsByFile[""]; general {
+		fileCount--
+	}
+	fmt.Printf("Found %d unresolved comment(s) in %d file(s) of %s:\n", len(threads), fileCount, projectDir)
 	for _, file := range files {
-		fmt.Printf("- %s (%d)\n", file, len(threadsByFile[file]))
+		fmt.Printf("- %s (%d)\n", addressLabel(file), len(threadsByFile[file]))
 	}
 
+	// General comments (no file) sort first, as their file path is empty
 	for _, file := range files {
-		fmt.Printf("\n# File: %s\n\n", filepath.Join(projectDir, file))
+		if file == "" {
+			fmt.Printf("\n# General: comments on the project, not on a single file\n\n")
+		} else {
+			fmt.Printf("\n# File: %s\n\n", filepath.Join(projectDir, file))
+		}
 		printThreads(threadsByFile[file])
 	}
+}
+
+// addressLabel names a commented file in the address summary.
+func addressLabel(file string) string {
+	if file == "" {
+		return "(general)"
+	}
+	return file
 }
 
 // claimAndNotify marks threads as being processed by the agent and tells open

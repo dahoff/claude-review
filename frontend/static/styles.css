@@ -1234,8 +1234,30 @@ table.diff-table .diff-thread-row td {
     background-color: var(--highlight-hover);
 }
 
-#other-comments h2 {
+#other-comments h2,
+#general-comments h2 {
     font-size: 1.1em;
+}
+
+/* General comments: on the project rather than a single file */
+#general-comments {
+    margin-bottom: 24px;
+}
+
+#general-comments h2 {
+    margin-top: 0;
+}
+
+.general-comment-add {
+    margin-left: auto;
+}
+
+.compare-refresh + .general-comment-add {
+    margin-left: 0;
+}
+
+#general-comment-new .diff-thread-form {
+    margin-bottom: 20px;
 }
 
 .comment-badge-delete {
