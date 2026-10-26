@@ -3,3 +3,4 @@ dist/
 dev_data_dir/
 coverage*
 .cache/
+.superpowers/

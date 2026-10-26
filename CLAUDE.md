@@ -38,9 +38,12 @@ claude-review is a lightweight companion for working on planning documents with 
 - **diff.go**: Changed-file listing, unified-diff parsing into split rows, and folding of unchanged context
 - **compare.go**: `/compare/<project>` handler; places comment threads on diff lines, under a file, or in "other files"; builds the
   GitHub-style file tree (folders first, single-child folders merged) that also orders the diff sections
+- **threads.go**: `/threads/<project>` handler (all open and resolved threads of a project), `/api/file-lines` (lines of a
+  text file in a registered project, for the threads page's context) and `openThreadCount` for the breadcrumbs'
+  Threads links
 
 ### Frontend
-- **frontend/templates/**: Go HTML templates (viewer.html, directory.html, index.html, compare.html)
+- **frontend/templates/**: Go HTML templates (viewer.html, directory.html, index.html, compare.html, threads.html)
 - **frontend/static/**: CSS and JavaScript for the web UI
 - **viewer.js**: Handles text selection, comment creation/editing, SSE connection for live updates
 - **theme.js**: Loaded in every page's `<head>`; applies the saved theme (dark by default, light via
@@ -48,6 +51,9 @@ claude-review is a lightweight companion for working on planning documents with 
   in styles.css are CSS variables defined per theme at the top of the file
 - **compare.js**: Compare page: changed-file tree (filter, jump, active highlight), right-side selection to comment,
   inline threads, gap expansion, live reload
+- **threads.js**: Threads page: filters by status (who wrote last: user → waiting on Claude, agent → waiting on you) kept in
+  `?filter=`, cards grouped by file with reply/resolve, expandable file context, live reload. "Open in file" links use
+  `#comment-<id>`, which viewer.js and compare.js scroll to
 
 ### Database Schema
 SQLite database stored at `~/.local/share/claude-review/comments.db`:

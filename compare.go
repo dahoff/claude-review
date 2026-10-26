@@ -84,9 +84,10 @@ func handleCompare(w http.ResponseWriter, r *http.Request) {
 
 	gitRepo := isGitRepo(projectDir)
 	data := map[string]interface{}{
-		"ProjectDir": projectDir,
-		"Nonce":      nonce,
-		"IsGitRepo":  gitRepo,
+		"ProjectDir":  projectDir,
+		"Nonce":       nonce,
+		"IsGitRepo":   gitRepo,
+		"OpenThreads": openThreadCount(projectDir),
 	}
 	if !gitRepo {
 		renderCompare(w, data)

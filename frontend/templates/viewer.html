@@ -17,6 +17,9 @@
             {{if .IsGitRepo}}
             <a class="changes-link" href="/compare{{.ProjectDir | pathescape}}">Changes</a>
             {{end}}
+            <a class="threads-link" href="/threads{{.ProjectDir | pathescape}}"
+                >Threads{{with .OpenThreads}} <span class="link-count">{{.}}</span>{{end}}</a
+            >
         </div>
 
         <div id="markdown-content">{{.HTMLContent}}</div>

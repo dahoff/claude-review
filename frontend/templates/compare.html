@@ -14,6 +14,9 @@
             <a href="/projects{{.ProjectDir | pathescape}}">{{.ProjectDir | base}}</a>
             <span class="breadcrumb-separator">›</span>
             <span>Changes</span>
+            <a class="threads-link" href="/threads{{.ProjectDir | pathescape}}"
+                >Threads{{with .OpenThreads}} <span class="link-count">{{.}}</span>{{end}}</a
+            >
         </div>
 
         {{if not .IsGitRepo}}

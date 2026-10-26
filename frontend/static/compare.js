@@ -24,7 +24,19 @@
             initSelection();
         }
         renderThreads();
+        scrollToLinkedThread();
         setupSSE();
+    }
+
+    // Scroll to the thread named by a #comment-<id> link (from the threads page)
+    function scrollToLinkedThread() {
+        const match = window.location.hash.match(/^#comment-(\d+)$/);
+        const thread = match && document.querySelector(`.diff-thread[data-root-id="${match[1]}"]`);
+        if (!thread) return;
+        const section = thread.closest('.diff-file');
+        if (section) section.classList.remove('collapsed');
+        thread.scrollIntoView({ block: 'center' });
+        thread.classList.add('linked');
     }
 
     function initControls() {

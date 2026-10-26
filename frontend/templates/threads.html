@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Threads - {{.ProjectDir | base}} - Claude Review</title>
+        <link rel="stylesheet" href="/static/styles.css" />
+        <script src="/static/theme.js"></script>
+    </head>
+    <body class="threads-page">
+        <div class="breadcrumb">
+            <a href="/">Home</a>
+            <span class="breadcrumb-separator">›</span>
+            <a href="/projects{{.ProjectDir | pathescape}}">{{.ProjectDir | base}}</a>
+            <span class="breadcrumb-separator">›</span>
+            <span>Threads</span>
+            {{if .IsGitRepo}}
+            <a class="changes-link" href="/compare{{.ProjectDir | pathescape}}">Changes</a>
+            {{end}}
+        </div>
+
+        <h1>Threads</h1>
+
+        <nav class="thread-filters" aria-label="Filter threads">
+            <button type="button" class="thread-filter" data-filter="open">All open</button>
+            <button type="button" class="thread-filter status-you" data-filter="you">Waiting on you</button>
+            <button type="button" class="thread-filter status-claude" data-filter="claude">Waiting on Claude</button>
+            <button type="button" class="thread-filter" data-filter="resolved">Resolved</button>
+        </nav>
+
+        <div id="thread-list"></div>
+        <p class="no-content" id="threads-empty" hidden></p>
+
+        <script nonce="{{.Nonce}}">
+            // Template variables from Go backend
+            const projectDir = {{.ProjectDir | json}};
+            const isGitRepo = {{.IsGitRepo | json}};
+            let openComments = {{.Open | json}};
+            const resolvedComments = {{.Resolved | json}};
+        </script>
+
+        <script defer src="/static/threads.js"></script>
+    </body>
+</html>

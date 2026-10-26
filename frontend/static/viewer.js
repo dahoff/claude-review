@@ -962,6 +962,22 @@
 
         // Update comment panel after loading all comments
         updateCommentPanel();
+        scrollToLinkedComment();
+    }
+
+    /**
+     * Scroll to the thread named by a #comment-<id> link (from the threads page) and flash it
+     */
+    function scrollToLinkedComment() {
+        const match = window.location.hash.match(/^#comment-(\d+)$/);
+        if (!match) return;
+        const highlight = document.querySelector(`.comment-highlight[data-comment-id="${match[1]}"]`);
+        if (!highlight) return;
+        highlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        highlight.style.backgroundColor = 'var(--highlight-hover)';
+        setTimeout(() => {
+            highlight.style.backgroundColor = '';
+        }, 1500);
     }
 
     /**

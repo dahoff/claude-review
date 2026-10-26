@@ -45,6 +45,8 @@
     --diff-add-num: rgba(63, 185, 80, 0.3);
     --gap-bg: rgba(56, 139, 253, 0.1);
     --gap-hover: rgba(56, 139, 253, 0.2);
+    --agent: #d97757;
+    --agent-bg: rgba(217, 119, 87, 0.15);
 }
 
 :root[data-theme='light'] {
@@ -93,6 +95,8 @@
     --diff-add-num: #cdffd8;
     --gap-bg: #f1f8ff;
     --gap-hover: #dbedff;
+    --agent: #c4623f;
+    --agent-bg: #fbeee8;
 }
 
 /* Base styles */
@@ -793,7 +797,7 @@ ul.contains-task-list li {
 }
 
 .comment-author.author-agent .comment-author-info {
-    color: #d97757;
+    color: var(--agent);
 }
 
 .comment-timestamp {
@@ -861,8 +865,9 @@ ul.contains-task-list li {
     color: var(--success-hover-fg);
 }
 
-/* Changes link (directory and viewer breadcrumbs) */
-.changes-link {
+/* Changes and Threads links (breadcrumbs) */
+.changes-link,
+.threads-link {
     margin-left: 16px;
     padding: 1px 8px;
     border: 1px solid var(--border);
@@ -1163,6 +1168,11 @@ table.diff-table .diff-thread-row td {
     line-height: 1.5;
 }
 
+.diff-thread.linked {
+    border-color: var(--highlight-border);
+    box-shadow: 0 0 0 2px var(--highlight-bg);
+}
+
 .diff-thread:last-child {
     margin-bottom: 0;
 }
@@ -1364,4 +1374,265 @@ table.diff-table .diff-thread-row td {
 .theme-toggle:hover {
     background-color: var(--bg-hover);
     color: var(--fg);
+}
+
+/* Count on the breadcrumb's Threads link */
+.link-count {
+    margin-left: 2px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background-color: var(--accent);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Threads page */
+body.threads-page {
+    max-width: 960px;
+}
+
+.thread-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.thread-filter {
+    padding: 3px 12px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: none;
+    color: var(--fg-muted);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.thread-filter:hover {
+    background-color: var(--bg-hover);
+    color: var(--fg);
+}
+
+.thread-filter.active {
+    background-color: var(--bg-hover);
+    border-color: var(--fg-faint);
+    color: var(--fg);
+}
+
+.thread-filter.status-you.active {
+    background-color: var(--info-bg);
+    border-color: var(--info-fg);
+    color: var(--info-fg);
+}
+
+.thread-filter.status-claude.active {
+    background-color: var(--agent-bg);
+    border-color: var(--agent);
+    color: var(--agent);
+}
+
+.filter-count {
+    margin-left: 6px;
+    font-weight: 600;
+}
+
+.thread-file-group {
+    margin-bottom: 28px;
+}
+
+h2.thread-file-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 10px;
+    padding: 0;
+    border: none;
+    font-size: 15px;
+}
+
+.thread-file-path {
+    font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    overflow-wrap: anywhere;
+}
+
+.thread-file-count {
+    color: var(--fg-muted);
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.thread-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background-color: var(--bg-subtle);
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.thread-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-muted);
+    color: var(--fg-muted);
+    font-size: 12px;
+}
+
+.thread-open-link {
+    margin-left: auto;
+}
+
+.status-chip {
+    padding: 1px 8px;
+    border: 1px solid;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.status-chip.status-you {
+    background-color: var(--info-bg);
+    border-color: var(--info-fg);
+    color: var(--info-fg);
+}
+
+.status-chip.status-claude {
+    background-color: var(--agent-bg);
+    border-color: var(--agent);
+    color: var(--agent);
+}
+
+.status-chip.status-resolved {
+    background-color: var(--success-bg);
+    border-color: var(--success-border);
+    color: var(--success-fg);
+}
+
+.thread-quote {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    margin: 10px 12px 4px;
+    padding: 2px 10px;
+    border-left: 3px solid var(--highlight-border);
+    border-radius: 0 4px 4px 0;
+    background-color: var(--highlight-bg);
+    font-size: 13px;
+    white-space: pre-wrap;
+}
+
+.thread-context-toggle {
+    margin: 2px 12px 4px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--fg-muted);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.thread-context-toggle:hover {
+    color: var(--link);
+}
+
+.thread-context {
+    margin: 4px 12px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: var(--bg);
+}
+
+table.context-table {
+    table-layout: fixed;
+    margin: 0;
+    font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 12px;
+    line-height: 20px;
+}
+
+table.context-table td {
+    padding: 0 8px;
+    border: none;
+    vertical-align: top;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+table.context-table tr:nth-child(even) {
+    background-color: transparent;
+}
+
+.context-num-col {
+    width: 50px;
+}
+
+table.context-table td.context-num {
+    color: var(--fg-faint);
+    text-align: right;
+    user-select: none;
+}
+
+table.context-table tr.context-hit {
+    background-color: var(--highlight-bg);
+}
+
+table.context-table tr.context-hit td.context-num {
+    box-shadow: inset 3px 0 0 var(--highlight-border);
+    color: var(--fg);
+}
+
+table.context-table tr.context-more td {
+    padding: 0;
+    background-color: var(--gap-bg);
+}
+
+.context-more button {
+    width: 100%;
+    padding: 2px;
+    border: none;
+    background: none;
+    color: var(--fg-muted);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.context-more button:hover {
+    background-color: var(--gap-hover);
+    color: var(--link);
+}
+
+.context-note {
+    margin: 0;
+    padding: 6px 10px;
+    color: var(--fg-muted);
+    font-size: 12px;
+}
+
+.thread-card .thread-item {
+    padding: 6px 12px;
+    border-bottom: none;
+}
+
+.thread-card .thread-item:hover {
+    background-color: transparent;
+}
+
+.thread-card .thread-item-comment {
+    font-size: 13px;
+    color: var(--fg);
+}
+
+.thread-card .diff-thread-form {
+    padding: 4px 12px;
+}
+
+.thread-card-actions {
+    display: flex;
+    gap: 6px;
+    padding: 6px 12px 10px;
 }

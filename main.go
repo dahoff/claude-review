@@ -140,12 +140,14 @@ func runServer() {
 	r.Get("/", handleHome)
 	r.Get("/projects/*", handleProjectFiles)
 	r.Get("/compare/*", handleCompare)
+	r.Get("/threads/*", handleThreads)
 
 	// API Routes
 	r.Post("/api/comments", handleCreateComment)
 	r.Patch("/api/comments/{id}", handleUpdateComment)
 	r.Patch("/api/comments/{id}/resolve", handleResolveThread)
 	r.Delete("/api/comments/{id}", handleDeleteComment)
+	r.Get("/api/file-lines", handleFileLines)
 	r.Get("/api/events", handleSSE)
 	r.Post("/api/events", handleBroadcast)
 

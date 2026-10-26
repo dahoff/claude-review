@@ -60,6 +60,13 @@ Select lines on the right-hand side to comment on them. These comments work like
 up, and Claude can reply and resolve them. Comments on files that are not in the current diff are listed at the
 bottom of the page.
 
+### All threads in one place
+
+Click **Threads** on any project page for every comment thread in the project, grouped by file, like the conversation
+tab of a pull request. Filter by **Waiting on you** (Claude replied last), **Waiting on Claude**, or **Resolved**;
+reply or resolve right there, expand the file lines around a comment with **Show context**, or jump to the thread
+with **Open in file**.
+
 ## Requirements
 
 - Linux or macOS

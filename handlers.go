@@ -203,6 +203,7 @@ func renderViewer(w http.ResponseWriter, r *http.Request, projectDir, filePath s
 		"Comments":    comments,
 		"Nonce":       nonce,
 		"IsGitRepo":   isGitRepo(projectDir),
+		"OpenThreads": openThreadCount(projectDir),
 	}
 
 	if err := templates.ExecuteTemplate(w, "viewer.html", data); err != nil {
@@ -320,11 +321,17 @@ func renderDirectoryListing(w http.ResponseWriter, r *http.Request, projectDir, 
 		}
 	}
 
+	openThreads := 0
+	for _, count := range threadCounts {
+		openThreads += count
+	}
+
 	data := map[string]interface{}{
-		"ProjectDir": projectDir,
-		"ChildPath":  childPath,
-		"Entries":    filteredEntries,
-		"IsGitRepo":  isGitRepo(projectDir),
+		"ProjectDir":  projectDir,
+		"ChildPath":   childPath,
+		"Entries":     filteredEntries,
+		"IsGitRepo":   isGitRepo(projectDir),
+		"OpenThreads": openThreads,
 	}
 
 	if err := templates.ExecuteTemplate(w, "directory.html", data); err != nil {
