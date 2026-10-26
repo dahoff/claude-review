@@ -6,6 +6,8 @@
     let pendingReload = false;
     let commentButton = null;
     let pendingSelection = null;
+    // Root comment ID of the thread selected in the thread list
+    let currentThreadId = null;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
@@ -20,6 +22,7 @@
         document.body.classList.add('js');
         initControls();
         initFileTree();
+        initSidebar();
         document.getElementById('general-comment-add').addEventListener('click', showGeneralCommentForm);
         if (!readOnly) {
             initSelection();
@@ -32,12 +35,165 @@
     // Scroll to the thread named by a #comment-<id> link (from the threads page)
     function scrollToLinkedThread() {
         const match = window.location.hash.match(/^#comment-(\d+)$/);
-        const thread = match && document.querySelector(`.diff-thread[data-root-id="${match[1]}"]`);
+        if (match) focusThread(Number(match[1]), 'auto');
+    }
+
+    // focusThread scrolls to a thread, opening its file if collapsed, and selects it in the thread list
+    function focusThread(id, behavior = 'smooth') {
+        const thread = document.querySelector(`.diff-thread[data-root-id="${id}"]`);
         if (!thread) return;
+        currentThreadId = id;
+        history.replaceState(null, '', `#comment-${id}`);
         const section = thread.closest('.diff-file');
         if (section) section.classList.remove('collapsed');
-        thread.scrollIntoView({ block: 'center' });
-        thread.classList.add('linked');
+        thread.scrollIntoView({ behavior, block: 'center' });
+        renderThreadNav();
+    }
+
+    // Sidebar: tabs between the changed files and the open threads, and stepping through threads
+
+    function initSidebar() {
+        const sidebar = document.querySelector('.compare-sidebar');
+        if (!sidebar) return;
+        const tabs = [...sidebar.querySelectorAll('.sidebar-tab')];
+        sidebar.querySelector('.sidebar-tabs').hidden = false;
+        sidebar.querySelector('.thread-nav-steps').hidden = false;
+
+        const show = (panel) => {
+            tabs.forEach((tab) => {
+                const active = tab.dataset.panel === panel;
+                tab.classList.toggle('active', active);
+                tab.setAttribute('aria-selected', String(active));
+            });
+            sidebar.querySelectorAll('.sidebar-panel').forEach((p) => (p.hidden = p.dataset.panel !== panel));
+            try {
+                localStorage.setItem('claude-review-compare-sidebar', panel);
+            } catch (e) {
+                // Storage unavailable: the choice lasts for this page only
+            }
+        };
+        tabs.forEach((tab) => tab.addEventListener('click', () => show(tab.dataset.panel)));
+
+        let saved = null;
+        try {
+            saved = localStorage.getItem('claude-review-compare-sidebar');
+        } catch (e) {
+            // Storage unavailable: use the default
+        }
+        const panels = tabs.map((tab) => tab.dataset.panel);
+        show(panels.includes(saved) ? saved : panels[0]);
+
+        sidebar.querySelector('.thread-nav-prev').addEventListener('click', () => stepThread(-1));
+        sidebar.querySelector('.thread-nav-next').addEventListener('click', () => stepThread(1));
+        document.addEventListener('keydown', (e) => {
+            if (e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return;
+            if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable]')) return;
+            if (e.key === 'n') stepThread(1);
+            if (e.key === 'p') stepThread(-1);
+        });
+    }
+
+    // navThreads returns the open threads in page order, with where each is shown.
+    function navThreads() {
+        const byId = new Map(groupThreads().map((t) => [t.root.id, t]));
+        return [...document.querySelectorAll('.diff-thread[data-root-id]')]
+            .map((el) => byId.get(Number(el.dataset.rootId)))
+            .filter(Boolean)
+            .map((thread) => {
+                const last = thread.replies.length ? thread.replies[thread.replies.length - 1] : thread.root;
+                return {
+                    id: thread.root.id,
+                    file: thread.root.file_path,
+                    line: thread.root.line_start,
+                    status: last.author === 'agent' ? 'you' : 'claude',
+                    claimed: thread.root.claimed,
+                    outdated: thread.root.outdated,
+                    snippet: (thread.root.comment_text || '').trim().split('\n')[0],
+                };
+            });
+    }
+
+    function stepThread(direction) {
+        const threads = navThreads();
+        if (threads.length === 0) return;
+        const index = threads.findIndex((t) => t.id === currentThreadId);
+        const next = index === -1 ? threads[direction > 0 ? 0 : threads.length - 1] : threads[index + direction];
+        if (next) focusThread(next.id);
+    }
+
+    function renderThreadNav() {
+        // Mark the selected thread, also after renderThreads rebuilt it
+        document.querySelectorAll('.diff-thread[data-root-id]').forEach((t) => {
+            t.classList.toggle('linked', Number(t.dataset.rootId) === currentThreadId);
+        });
+        const sidebar = document.querySelector('.compare-sidebar');
+        if (!sidebar) return;
+        const threads = navThreads();
+        const empty = threads.length === 0;
+        const index = threads.findIndex((t) => t.id === currentThreadId);
+        sidebar.querySelector('.thread-nav-count').textContent = threads.length;
+        sidebar.querySelector('.thread-nav-position').textContent = empty
+            ? 'none open'
+            : index === -1
+              ? `${threads.length} open`
+              : `${index + 1} of ${threads.length}`;
+        sidebar.querySelector('.thread-nav-prev').disabled = empty || index === 0;
+        sidebar.querySelector('.thread-nav-next').disabled = empty || index === threads.length - 1;
+
+        const list = sidebar.querySelector('.thread-nav-list');
+        list.replaceChildren();
+        if (empty) {
+            const note = document.createElement('p');
+            note.className = 'thread-nav-empty';
+            note.textContent = 'No open threads. Select text on the right side of a diff to comment.';
+            list.appendChild(note);
+            return;
+        }
+        let lastFile = null;
+        for (const thread of threads) {
+            if (thread.file !== lastFile) {
+                lastFile = thread.file;
+                const heading = document.createElement('div');
+                heading.className = 'thread-nav-file';
+                heading.textContent = thread.file || 'General';
+                heading.title = thread.file || 'Comments on the project, not on a single file';
+                list.appendChild(heading);
+            }
+
+            const item = document.createElement('a');
+            item.className = 'thread-nav-item';
+            item.href = `#comment-${thread.id}`;
+            if (thread.id === currentThreadId) item.classList.add('current');
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                focusThread(thread.id);
+            });
+
+            const dot = document.createElement('span');
+            dot.className = `thread-nav-dot status-${thread.status}`;
+            dot.title =
+                thread.status === 'you'
+                    ? 'Waiting on you'
+                    : thread.claimed
+                      ? 'Claude is working on it'
+                      : 'Waiting on Claude';
+            item.appendChild(dot);
+            if (thread.line) {
+                const line = document.createElement('span');
+                line.className = 'thread-nav-line';
+                line.textContent = `L${thread.line}`;
+                if (thread.outdated) line.title = 'Outdated: the commented lines changed';
+                item.appendChild(line);
+            }
+            const text = document.createElement('span');
+            text.className = 'thread-nav-snippet';
+            text.textContent = thread.snippet;
+            item.appendChild(text);
+            list.appendChild(item);
+        }
+
+        const current = list.querySelector('.thread-nav-item.current');
+        if (current) current.scrollIntoView({ block: 'nearest' });
     }
 
     function initControls() {
@@ -331,6 +487,7 @@
         otherSection.hidden = otherByFile.size === 0;
         generalSection.hidden =
             !generalList.hasChildNodes() && !generalSection.querySelector('.general-comment-new').hasChildNodes();
+        renderThreadNav();
     }
 
     function sectionFor(filePath) {

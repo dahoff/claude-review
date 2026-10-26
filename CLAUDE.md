@@ -54,8 +54,9 @@ claude-review is a lightweight companion for working on planning documents with 
 - **theme.js**: Loaded in every page's `<head>`; applies the saved theme (dark by default, light via
   `data-theme="light"` on `<html>`, stored in localStorage) before first paint and adds the toggle button. All colors
   in styles.css are CSS variables defined per theme at the top of the file
-- **compare.js**: Compare page: changed-file tree (filter, jump, active highlight), right-side selection to comment,
-  inline threads, gap expansion, live reload
+- **compare.js**: Compare page: left sidebar with Files/Threads tabs (changed-file tree with filter, jump, active
+  highlight; open threads in page order with Prev/Next and `n`/`p`), right-side selection to comment, inline threads,
+  gap expansion, live reload
 - **threads.js**: Threads page: filters by status (who wrote last: user → waiting on Claude, agent → waiting on you) kept in
   `?filter=`, cards grouped by file with reply/resolve, expandable file context, live reload. "Open in file" links use
   `#comment-<id>`, which viewer.js and compare.js scroll to

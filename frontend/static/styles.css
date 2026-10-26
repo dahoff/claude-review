@@ -1458,14 +1458,60 @@ table.diff-table .diff-thread-row td {
     align-items: start;
 }
 
-.file-tree {
+/* Left column of the compare page: changed files or open threads, chosen by tabs */
+.compare-sidebar {
     position: sticky;
     top: 8px;
+    display: flex;
+    flex-direction: column;
     max-height: calc(100vh - 16px);
-    overflow: auto;
-    font-size: 13px;
     border: 1px solid var(--border);
     border-radius: 6px;
+    font-size: 13px;
+}
+
+.sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-muted);
+}
+
+.sidebar-tabs[hidden] {
+    display: none;
+}
+
+.sidebar-tab {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--fg-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.sidebar-tab:hover {
+    color: var(--fg);
+}
+
+.sidebar-tab.active {
+    border-bottom-color: var(--accent);
+    color: var(--fg);
+}
+
+.compare-sidebar .thread-nav-steps[hidden],
+.sidebar-panel[hidden] {
+    display: none;
+}
+
+.compare-sidebar .thread-nav-list {
+    flex: 1;
+    min-height: 0;
+}
+
+.file-tree {
+    overflow: auto;
     padding: 8px;
 }
 
@@ -1554,9 +1600,9 @@ table.diff-table .diff-thread-row td {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .file-tree {
+    .compare-sidebar {
         position: static;
-        max-height: 40vh;
+        max-height: 50vh;
     }
 }
 

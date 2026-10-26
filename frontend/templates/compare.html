@@ -108,12 +108,35 @@
         {{with $c.Notice}}
         <p class="compare-notice">{{.}}</p>
         {{end}}
-        <div class="compare-layout{{if .Files}} has-tree{{end}}">
-            {{if .Files}}
-            <nav class="file-tree" aria-label="Changed files">
-                <input type="search" class="file-tree-filter" placeholder="Filter changed files" hidden />
-                {{template "file-tree" .FileTree}}
-            </nav>
+        <div class="compare-layout{{if or .Files .Comments}} has-tree{{end}}">
+            {{if or .Files .Comments}}
+            <aside class="compare-sidebar">
+                <!-- Tabs and thread list are set up by compare.js -->
+                <div class="sidebar-tabs" role="tablist" hidden>
+                    {{if .Files}}
+                    <button type="button" class="sidebar-tab" role="tab" data-panel="files">
+                        Files <span class="filter-count">{{len .Files}}</span>
+                    </button>
+                    {{end}}
+                    <button type="button" class="sidebar-tab" role="tab" data-panel="threads">
+                        Threads <span class="filter-count thread-nav-count"></span>
+                    </button>
+                </div>
+                <div class="thread-nav-steps" hidden>
+                    <button type="button" class="comment-btn thread-nav-prev" title="Previous thread (p)">
+                        ‹ Prev
+                    </button>
+                    <span class="thread-nav-position"></span>
+                    <button type="button" class="comment-btn thread-nav-next" title="Next thread (n)">Next ›</button>
+                </div>
+                {{if .Files}}
+                <nav class="file-tree sidebar-panel" data-panel="files" aria-label="Changed files">
+                    <input type="search" class="file-tree-filter" placeholder="Filter changed files" hidden />
+                    {{template "file-tree" .FileTree}}
+                </nav>
+                {{end}}
+                <nav class="thread-nav-list sidebar-panel" data-panel="threads" aria-label="Open threads" hidden></nav>
+            </aside>
             {{end}}
             <div class="compare-files">
                 <section id="general-comments" hidden>
